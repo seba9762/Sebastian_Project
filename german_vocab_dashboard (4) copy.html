@@ -1,9 +1,39 @@
 <!DOCTYPE html>
+<!--
+    German Vocabulary Learning System - Admin Dashboard
+    
+    This dashboard connects to a Supabase database to display real-time analytics
+    for a German vocabulary learning system.
+    
+    SETUP INSTRUCTIONS:
+    1. Open this file in a text editor
+    2. Find the "CONFIGURATION REQUIRED" section (around line 440)
+    3. Replace YOUR_SUPABASE_URL_HERE with your Supabase project URL
+    4. Replace YOUR_SUPABASE_ANON_KEY_HERE with your Supabase anon/public key
+    5. Save the file and open it in a web browser
+    
+    For detailed setup instructions, see README.md and CONFIGURATION.md
+    
+    FEATURES:
+    - Real-time analytics dashboard
+    - Interactive charts and visualizations
+    - Auto-refresh every 5 minutes
+    - Built-in debug console
+    - Connection testing utilities
+    
+    SECURITY NOTE:
+    The anon/public key is safe to use in client-side code as it respects
+    Row Level Security (RLS) policies. However, avoid committing this file
+    to public repositories after adding your credentials.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>German Vocabulary - Admin Dashboard</title>
+    <!-- Supabase JavaScript Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -284,6 +314,31 @@
         <!-- Alert Area -->
         <div id="alertArea"></div>
         
+        <!-- Configuration Instructions (Hidden after setup) -->
+        <div id="configInstructions" class="table-card" style="margin-bottom: 30px; display: none;">
+            <h3 class="chart-title">📝 Configuration Instructions</h3>
+            <div style="line-height: 1.8;">
+                <p style="margin-bottom: 15px;"><strong>To connect this dashboard to your Supabase database:</strong></p>
+                <ol style="margin-left: 20px; margin-bottom: 15px;">
+                    <li style="margin-bottom: 10px;">Open this HTML file in a text editor</li>
+                    <li style="margin-bottom: 10px;">Find the <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">CONFIGURATION REQUIRED</code> section near line 414</li>
+                    <li style="margin-bottom: 10px;">Replace <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">YOUR_SUPABASE_URL_HERE</code> with your Supabase project URL</li>
+                    <li style="margin-bottom: 10px;">Replace <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">YOUR_SUPABASE_ANON_KEY_HERE</code> with your Supabase anon/public key</li>
+                    <li style="margin-bottom: 10px;">Save the file and refresh the page</li>
+                </ol>
+                <p style="background: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #ffc107; margin-top: 15px;">
+                    <strong>🔑 Where to find your credentials:</strong><br>
+                    1. Go to your Supabase project dashboard<br>
+                    2. Click on "Settings" → "API"<br>
+                    3. Copy the "Project URL" and "anon public" key
+                </p>
+                <p style="background: #f8d7da; padding: 10px; border-radius: 5px; border-left: 4px solid #dc3545; margin-top: 15px;">
+                    <strong>⚠️ Security Note:</strong> The anon key is safe to use in client-side code as it respects Row Level Security (RLS) policies.
+                    However, do NOT commit this file to public repositories if you've added your credentials directly.
+                </p>
+            </div>
+        </div>
+        
         <!-- Debug Output -->
         <div id="debugCard" class="table-card hidden" style="margin-bottom: 30px;">
             <h3 class="chart-title">Debug Information</h3>
@@ -410,9 +465,69 @@
     </div>
     
     <script>
-        // ⚠️ CONFIGURE YOUR SUPABASE CREDENTIALS HERE ⚠️
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+        // ============================================================================
+        // ⚠️ CONFIGURATION REQUIRED ⚠️
+        // ============================================================================
+        // Option 1: Direct Configuration (Not recommended for production)
+        // Replace the placeholders below with your actual Supabase credentials
+        // Find these in your Supabase project settings under API
+        
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';  // e.g., 'https://xxxxx.supabase.co'
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';  // Your anon/public key
+        
+        // Option 2: Environment Variables (Recommended)
+        // If using a build tool or server, use environment variables:
+        // const SUPABASE_URL = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL_HERE';
+        // const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE';
+        
+        // ============================================================================
+        // Initialize Supabase Client
+        // ============================================================================
+        let supabase = null;
+        
+        function initializeSupabase() {
+            const configInstructions = document.getElementById('configInstructions');
+            
+            if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') {
+                const error = 'Supabase URL is not configured. Please update the SUPABASE_URL constant in the HTML file.';
+                console.error(error);
+                showAlert('⚠️ Configuration Required: Please configure your Supabase credentials. See instructions below.', 'warning');
+                logDebug('ERROR: ' + error);
+                if (configInstructions) configInstructions.style.display = 'block';
+                return false;
+            }
+            
+            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
+                const error = 'Supabase Anon Key is not configured. Please update the SUPABASE_ANON_KEY constant in the HTML file.';
+                console.error(error);
+                showAlert('⚠️ Configuration Required: Please configure your Supabase credentials. See instructions below.', 'warning');
+                logDebug('ERROR: ' + error);
+                if (configInstructions) configInstructions.style.display = 'block';
+                return false;
+            }
+            
+            try {
+                if (!window.supabase || !window.supabase.createClient) {
+                    throw new Error('Supabase library not loaded. Check if the CDN is accessible.');
+                }
+                
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                logDebug('✓ Supabase client initialized successfully', {
+                    url: SUPABASE_URL,
+                    keyPrefix: SUPABASE_ANON_KEY.substring(0, 20) + '...'
+                });
+                
+                // Hide configuration instructions once properly configured
+                if (configInstructions) configInstructions.style.display = 'none';
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Supabase client:', error);
+                showAlert('❌ Failed to initialize Supabase client: ' + error.message, 'error');
+                logDebug('ERROR: Failed to initialize Supabase client', error);
+                return false;
+            }
+        }
         
         // Chart instances
         let activityChart, difficultyChart, exerciseChart, performersChart;
@@ -457,56 +572,78 @@
         async function testConnection() {
             logDebug('Testing Supabase connection...');
             
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_KEY') {
-                showAlert('⚠️ Please configure your Supabase credentials in the HTML file!', 'error');
-                logDebug('ERROR: Credentials not configured');
-                return;
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    return;
+                }
             }
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/users?select=count`, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'count=exact'
-                    }
+                logDebug('Attempting to query users table...');
+                
+                const { data, error, count } = await supabase
+                    .from('users')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                const message = `✅ Connection successful! Database is accessible. ${count !== null ? 'Found ' + count + ' users.' : ''}`;
+                showAlert(message, 'success');
+                logDebug('✓ Connection test passed', { 
+                    count,
+                    timestamp: new Date().toISOString()
                 });
                 
-                if (response.ok) {
-                    const count = response.headers.get('content-range');
-                    showAlert(`✅ Connection successful! ${count ? 'Found ' + count.split('/')[1] + ' users.' : ''}`, 'success');
-                    logDebug('Connection test passed', { status: response.status });
-                } else {
-                    throw new Error(`${response.status}: ${response.statusText}`);
-                }
+                return true;
             } catch (error) {
-                showAlert(`❌ Connection failed: ${error.message}`, 'error');
-                logDebug('Connection test failed', error);
+                const errorMessage = error.message || error.toString();
+                console.error('Connection test failed:', error);
+                showAlert(`❌ Connection failed: ${errorMessage}`, 'error');
+                logDebug('✗ Connection test failed', {
+                    error: errorMessage,
+                    details: error,
+                    hint: error.hint || 'Check your Supabase URL and API key. Ensure the users table exists and is accessible.'
+                });
+                return false;
             }
         }
         
-        async function callFunction(functionName) {
-            logDebug(`Calling function: ${functionName}`);
+        async function callFunction(functionName, params = {}) {
+            logDebug(`Calling RPC function: ${functionName}`, params);
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    logDebug(`✗ Cannot call ${functionName} - Supabase not initialized`);
+                    return null;
+                }
+            }
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const { data, error } = await supabase.rpc(functionName, params);
                 
-                if (!response.ok) {
-                    throw new Error(`${response.status}: ${response.statusText}`);
+                if (error) {
+                    throw error;
                 }
                 
-                const data = await response.json();
-                logDebug(`✓ ${functionName} returned:`, data);
+                logDebug(`✓ ${functionName} returned successfully`, {
+                    dataType: Array.isArray(data) ? 'array' : typeof data,
+                    length: Array.isArray(data) ? data.length : null
+                });
+                
                 return data;
             } catch (error) {
-                logDebug(`✗ ${functionName} failed: ${error.message}`);
+                const errorMessage = error.message || error.toString();
+                console.error(`RPC function ${functionName} failed:`, error);
+                logDebug(`✗ ${functionName} failed`, {
+                    error: errorMessage,
+                    details: error,
+                    hint: error.hint || 'Ensure the database function exists and is accessible.',
+                    code: error.code || 'unknown'
+                });
                 return null;
             }
         }
@@ -599,40 +736,84 @@
         }
         
         async function loadData() {
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_KEY') {
-                showAlert('⚠️ Please configure your Supabase credentials at the top of the HTML file!', 'error');
-                return;
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    logDebug('Cannot load data - Supabase initialization failed');
+                    return;
+                }
             }
             
             try {
                 logDebug('=== Starting data load ===');
+                showAlert('🔄 Loading dashboard data...', 'info');
                 
-                const stats = await callFunction('get_dashboard_stats');
-                const userProgress = await callFunction('get_user_progress_summary');
-                const dailyActivity = await callFunction('get_daily_activity');
-                const difficulty = await callFunction('get_difficulty_distribution');
-                const exerciseAccuracy = await callFunction('get_exercise_accuracy');
-                const difficultWords = await callFunction('get_difficult_words');
-                const systemSummary = await callFunction('get_all_sessions_summary');
+                const [
+                    stats,
+                    userProgress,
+                    dailyActivity,
+                    difficulty,
+                    exerciseAccuracy,
+                    difficultWords,
+                    systemSummary
+                ] = await Promise.all([
+                    callFunction('get_dashboard_stats'),
+                    callFunction('get_user_progress_summary'),
+                    callFunction('get_daily_activity'),
+                    callFunction('get_difficulty_distribution'),
+                    callFunction('get_exercise_accuracy'),
+                    callFunction('get_difficult_words'),
+                    callFunction('get_all_sessions_summary')
+                ]);
                 
-                if (stats) updateStats(stats);
-                if (systemSummary) updateSystemOverview(systemSummary);
+                let updateCount = 0;
+                
+                if (stats) {
+                    updateStats(stats);
+                    updateCount++;
+                }
+                if (systemSummary) {
+                    updateSystemOverview(systemSummary);
+                    updateCount++;
+                }
                 if (userProgress) {
                     updateUsersTable(userProgress);
                     updatePerformersChart(userProgress);
+                    updateCount++;
                 }
-                if (dailyActivity) updateActivityChart(dailyActivity);
-                if (difficulty) updateDifficultyChart(difficulty);
-                if (exerciseAccuracy) updateExerciseChart(exerciseAccuracy);
-                if (difficultWords) updateDifficultWordsTable(difficultWords);
+                if (dailyActivity) {
+                    updateActivityChart(dailyActivity);
+                    updateCount++;
+                }
+                if (difficulty) {
+                    updateDifficultyChart(difficulty);
+                    updateCount++;
+                }
+                if (exerciseAccuracy) {
+                    updateExerciseChart(exerciseAccuracy);
+                    updateCount++;
+                }
+                if (difficultWords) {
+                    updateDifficultWordsTable(difficultWords);
+                    updateCount++;
+                }
                 
-                showAlert('✅ Dashboard updated successfully!', 'success');
-                logDebug('=== Data load complete ===');
+                if (updateCount > 0) {
+                    showAlert(`✅ Dashboard updated successfully! Loaded ${updateCount} data sections.`, 'success');
+                    logDebug('=== Data load complete ===', { sectionsLoaded: updateCount });
+                } else {
+                    showAlert('⚠️ No data was returned from the database. Check if the database functions exist and return data.', 'warning');
+                    logDebug('=== Data load complete but no data returned ===');
+                }
                 
             } catch (error) {
                 console.error('Error loading data:', error);
-                showAlert(`❌ Error: ${error.message}`, 'error');
-                logDebug('FATAL ERROR', error);
+                const errorMessage = error.message || error.toString();
+                showAlert(`❌ Error loading data: ${errorMessage}`, 'error');
+                logDebug('FATAL ERROR during data load', {
+                    error: errorMessage,
+                    details: error
+                });
             }
         }
         
@@ -825,9 +1006,50 @@
         
         // Initialize on page load
         window.addEventListener('load', () => {
+            console.log('🚀 Dashboard loading...');
+            console.log('📍 Supabase JS Client Library version:', window.supabase ? 'Loaded' : 'NOT LOADED');
+            logDebug('Dashboard initialization started');
+            logDebug('Supabase library status: ' + (window.supabase ? 'Loaded' : 'NOT LOADED'));
+            
             initCharts();
-            loadData();
-            setInterval(loadData, 300000); // Auto-refresh every 5 minutes
+            
+            const initialized = initializeSupabase();
+            if (initialized) {
+                logDebug('Starting initial data load...');
+                loadData();
+                
+                // Auto-refresh every 5 minutes
+                setInterval(() => {
+                    logDebug('Auto-refresh triggered');
+                    loadData();
+                }, 300000);
+                
+                console.log('✅ Dashboard initialization complete - Connected to Supabase');
+            } else {
+                document.getElementById('configInstructions').style.display = 'block';
+                logDebug('Dashboard ready but waiting for configuration');
+                console.log('⚠️ Dashboard waiting for configuration');
+            }
+        });
+        
+        // Handle errors globally
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            logDebug('Global error caught', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error
+            });
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            logDebug('Unhandled promise rejection', {
+                reason: event.reason,
+                promise: event.promise
+            });
         });
     </script>
 </body>
