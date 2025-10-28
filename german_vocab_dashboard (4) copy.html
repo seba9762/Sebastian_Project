@@ -308,6 +308,7 @@
                 <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
                 <button class="debug-btn" onclick="toggleDebug()">🔍 Toggle Debug</button>
                 <button class="debug-btn" onclick="testConnection()">🔌 Test Connection</button>
+                <button class="debug-btn" onclick="diagnoseDataIssue()">🔬 Diagnose Data</button>
             </div>
         </header>
         
@@ -597,6 +598,11 @@
                     timestamp: new Date().toISOString()
                 });
                 
+                // Also test the dashboard stats function directly
+                logDebug('Testing get_dashboard_stats function directly...');
+                const statsTest = await callFunction('get_dashboard_stats');
+                logDebug('Direct test of get_dashboard_stats:', statsTest);
+                
                 return true;
             } catch (error) {
                 const errorMessage = error.message || error.toString();
@@ -608,6 +614,84 @@
                     hint: error.hint || 'Check your Supabase URL and API key. Ensure the users table exists and is accessible.'
                 });
                 return false;
+            }
+        }
+        
+        async function diagnoseDataIssue() {
+            logDebug('=== DIAGNOSTIC MODE ===');
+            showAlert('🔬 Running diagnostics...', 'info');
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    return;
+                }
+            }
+            
+            try {
+                // Get current date/time info
+                const now = new Date();
+                const timezoneOffset = now.getTimezoneOffset();
+                const localTime = now.toLocaleString();
+                const utcTime = now.toISOString();
+                
+                logDebug('Timezone Information:', {
+                    localTime,
+                    utcTime,
+                    timezoneOffset: timezoneOffset + ' minutes',
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                });
+                
+                // Test get_dashboard_stats
+                logDebug('--- Testing get_dashboard_stats ---');
+                const stats = await callFunction('get_dashboard_stats');
+                logDebug('Stats returned:', JSON.stringify(stats, null, 2));
+                
+                // Try to query sessions table directly to see if there's data
+                logDebug('--- Checking sessions table directly ---');
+                const { data: sessionsData, error: sessionsError } = await supabase
+                    .from('sessions')
+                    .select('*')
+                    .limit(5);
+                
+                if (sessionsError) {
+                    logDebug('Sessions table error:', sessionsError);
+                } else {
+                    logDebug('Sessions table sample:', {
+                        count: sessionsData?.length || 0,
+                        sample: sessionsData
+                    });
+                }
+                
+                // Check conversation_messages for today
+                logDebug('--- Checking messages for today ---');
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const todayISO = todayStart.toISOString().split('T')[0];
+                
+                logDebug('Today\'s date (local):', todayStart.toLocaleDateString());
+                logDebug('Today\'s date (ISO):', todayISO);
+                
+                const { data: messagesData, error: messagesError, count: messagesCount } = await supabase
+                    .from('conversation_messages')
+                    .select('*', { count: 'exact' })
+                    .gte('created_at', todayISO)
+                    .limit(5);
+                
+                if (messagesError) {
+                    logDebug('Messages query error:', messagesError);
+                } else {
+                    logDebug('Messages today:', {
+                        count: messagesCount,
+                        sample: messagesData
+                    });
+                }
+                
+                showAlert('✅ Diagnostic complete! Check the debug console for details.', 'success');
+                
+            } catch (error) {
+                logDebug('Diagnostic error:', error);
+                showAlert('❌ Diagnostic failed: ' + error.message, 'error');
             }
         }
         
@@ -631,7 +715,8 @@
                 
                 logDebug(`✓ ${functionName} returned successfully`, {
                     dataType: Array.isArray(data) ? 'array' : typeof data,
-                    length: Array.isArray(data) ? data.length : null
+                    length: Array.isArray(data) ? data.length : null,
+                    data: data
                 });
                 
                 return data;
