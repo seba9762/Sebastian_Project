@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Structure Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pass { color: #28a745; font-weight: bold; }
+        .fail { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; }
+        code { background: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Dashboard Structure Test</h1>
+    <p>This page tests if your dashboard HTML file is properly structured.</p>
+    
+    <div class="test-section">
+        <h2>Test 1: File Exists</h2>
+        <p id="test1">Testing...</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Supabase Library</h2>
+        <p class="info">Checking if @supabase/supabase-js library can be loaded...</p>
+        <p id="test2">Testing...</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Chart.js Library</h2>
+        <p class="info">Checking if Chart.js library can be loaded...</p>
+        <p id="test3">Testing...</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>What You Need to Do</h2>
+        <ol>
+            <li>Open <code>german_vocab_dashboard (4) copy.html</code> in a text editor</li>
+            <li>Find line 475-476 (search for <code>YOUR_SUPABASE_URL_HERE</code>)</li>
+            <li>Replace with your actual Supabase credentials:
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px;">
+const SUPABASE_URL = 'https://your-project-id.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGc...your-actual-key...';</pre>
+            </li>
+            <li>Save the file</li>
+            <li>Open <code>german_vocab_dashboard (4) copy.html</code> in your browser</li>
+            <li>Click "🔌 Test Connection" button</li>
+            <li>Click "🔄 Refresh Data" button</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>📍 Where to Find Your Credentials</h2>
+        <ol>
+            <li>Go to <a href="https://app.supabase.com/" target="_blank">https://app.supabase.com/</a></li>
+            <li>Open your project</li>
+            <li>Click Settings → API</li>
+            <li>Copy:
+                <ul>
+                    <li><strong>Project URL</strong> (under "Project URL")</li>
+                    <li><strong>anon public</strong> key (under "Project API keys")</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Expected Behavior</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Scenario</th>
+                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">What You'll See</th>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Without Configuration</strong></td>
+                <td style="padding: 10px; border: 1px solid #dee2e6;">
+                    ⚠️ Warning: "Configuration Required"<br>
+                    Configuration instructions panel visible<br>
+                    No data in charts/tables
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>With Valid Configuration</strong></td>
+                <td style="padding: 10px; border: 1px solid #dee2e6;">
+                    ✅ Success: "Connection successful"<br>
+                    Data loads in charts and tables<br>
+                    Numbers appear in stat cards
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>With Invalid Credentials</strong></td>
+                <td style="padding: 10px; border: 1px solid #dee2e6;">
+                    ❌ Error: "Connection failed"<br>
+                    Error details in debug console<br>
+                    Check credentials and try again
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Test 1
+        document.getElementById('test1').innerHTML = 
+            '<span class="pass">✓ PASS</span> - You can see this page, so HTML files work in your browser!';
+        
+        // Test 2
+        setTimeout(() => {
+            if (window.supabase && window.supabase.createClient) {
+                document.getElementById('test2').innerHTML = 
+                    '<span class="pass">✓ PASS</span> - Supabase library loaded successfully from CDN!';
+            } else {
+                document.getElementById('test2').innerHTML = 
+                    '<span class="fail">✗ FAIL</span> - Supabase library failed to load. Check your internet connection.';
+            }
+        }, 1000);
+        
+        // Test 3
+        setTimeout(() => {
+            if (window.Chart) {
+                document.getElementById('test3').innerHTML = 
+                    '<span class="pass">✓ PASS</span> - Chart.js library loaded successfully from CDN!';
+            } else {
+                document.getElementById('test3').innerHTML = 
+                    '<span class="fail">✗ FAIL</span> - Chart.js library failed to load. Check your internet connection.';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
