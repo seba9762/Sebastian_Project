@@ -2,7 +2,15 @@
 
 ## 🎯 Start Here
 
-If you're confused about why data isn't showing, **read ONE of these first:**
+### 🔥 If You're Seeing Zeros (Data Discrepancy Issue)
+
+| File | Best For | Time |
+|------|----------|------|
+| **APPLY_FIX_NOW.md** ⚡ | Just fix it! | 5 min |
+| **fix_functions.sql** 🔧 | The actual SQL fix (copy & run) | 2 min |
+| **DIAGNOSTIC_RESULTS_AND_FIX.md** | Complete analysis & solution | 10 min |
+
+### 📝 If You Need to Configure Credentials First
 
 | File | Best For | Time |
 |------|----------|------|
@@ -87,6 +95,37 @@ If you're confused about why data isn't showing, **read ONE of these first:**
   - Files modified/created
   - Verification steps
   - Testing checklist
+
+### 🔬 Data Discrepancy Fixes (NEW!)
+- **APPLY_FIX_NOW.md** ⚡ (NEW!)
+  - Quick fix for zeros issue
+  - Based on diagnostic results
+  - 5-minute solution
+
+- **fix_functions.sql** 🔧 (NEW!)
+  - Ready-to-run SQL script
+  - Fixes all database functions
+  - Just copy and paste!
+
+- **DIAGNOSTIC_RESULTS_AND_FIX.md** (NEW!)
+  - Complete diagnostic analysis
+  - Root cause explanation
+  - Comprehensive fix guide
+
+- **COMPLETE_FIX_BASED_ON_DIAGNOSTICS.md** (NEW!)
+  - Detailed fix documentation
+  - Multiple solution approaches
+  - Troubleshooting guide
+
+- **FIX_ZEROS_ISSUE.md**
+  - General zeros troubleshooting
+  - Timezone issue explanation
+  - Multiple fix options
+
+- **DATA_DISCREPANCY_FIX.md**
+  - Technical deep dive
+  - Why discrepancies happen
+  - Prevention strategies
 
 ### 🧪 Testing & Verification
 - **test_dashboard_structure.html** (5.8 KB)
