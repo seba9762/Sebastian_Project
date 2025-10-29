@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<!--
+    German Vocabulary Learning System - Enhanced Admin Dashboard with User Details
+    
+    This dashboard connects to a Supabase database to display real-time analytics
+    for a German vocabulary learning system.
+    
+    SETUP INSTRUCTIONS:
+    1. Open this file in a text editor
+    2. Find the "CONFIGURATION REQUIRED" section (around line 580)
+    3. Replace YOUR_SUPABASE_URL_HERE with your Supabase project URL
+    4. Replace YOUR_SUPABASE_ANON_KEY_HERE with your Supabase anon/public key
+    5. Run user_detail_functions_updated.sql in Supabase SQL Editor first!
+    6. Save this file and open it in a web browser
+    
+    NEW FEATURES:
+    - Click any user name to see detailed statistics
+    - User progress timeline charts
+    - Challenging words analysis
+    - Learning pattern analysis
+    - Word mastery breakdown
+    - Recent activity log
+    - URL routing (can bookmark user pages)
+    - Browser back/forward support
+    
+    EXISTING FEATURES:
+    - Real-time analytics dashboard
+    - Interactive charts and visualizations
+    - Built-in debug console
+    - Connection testing utilities
+    
+    SECURITY NOTE:
+    The anon/public key is safe to use in client-side code as it respects
+    Row Level Security (RLS) policies. However, avoid committing this file
+    to public repositories after adding your credentials.
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Vocabulary - Enhanced Dashboard</title>
+    <!-- Supabase JavaScript Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .debug-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        
+        .debug-btn:hover {
+            background: #5a6268;
+        }
+        
+        .back-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-btn:hover {
+            background: #218838;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-trend {
+            color: #28a745;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .debug-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* NEW: User detail specific styles */
+        .clickable-name {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        
+        .clickable-name:hover {
+            color: #764ba2;
+        }
+        
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .insight-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .insight-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .insight-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .activity-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .activity-indicator.correct {
+            background: #28a745;
+        }
+        
+        .activity-indicator.incorrect {
+            background: #dc3545;
+        }
+        
+        .activity-indicator.neutral {
+            background: #6c757d;
+        }
+        
+        .view-transition {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .config-panel {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .config-panel h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        
+        .config-panel ol {
+            margin-left: 20px;
+        }
+        
+        .config-panel li {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .config-panel code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Dashboard View -->
+    <div id="mainDashboard" class="dashboard view-transition">
+        <header>
+            <h1>🇩🇪 German Vocabulary Learning System</h1>
+            <p class="subtitle">Admin Dashboard - Real-time Analytics with User Details</p>
+            <div class="button-group">
+                <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+                <button class="debug-btn" onclick="toggleDebug()">🔍 Toggle Debug</button>
+                <button class="debug-btn" onclick="testConnection()">🔌 Test Connection</button>
+                <button class="debug-btn" onclick="diagnoseDataIssue()">🔬 Diagnose Data</button>
+            </div>
+        </header>
+        
+        <!-- Alert Area -->
+        <div id="alertArea"></div>
+        
+        <!-- Configuration Instructions (shown only if not configured) -->
+        <div id="configInstructions" class="config-panel hidden">
+            <h3>⚠️ Configuration Required</h3>
+            <p style="margin-bottom: 15px;">Please configure your Supabase credentials to connect this dashboard to your database.</p>
+            <ol>
+                <li>Open this HTML file in a text editor</li>
+                <li>Find the <code>CONFIGURATION REQUIRED</code> section (search for YOUR_SUPABASE_URL_HERE)</li>
+                <li>Replace <code>YOUR_SUPABASE_URL_HERE</code> with your Supabase project URL</li>
+                <li>Replace <code>YOUR_SUPABASE_ANON_KEY_HERE</code> with your anon/public API key</li>
+                <li>Save the file and refresh this page</li>
+            </ol>
+            <p style="margin-top: 15px;"><strong>Where to find your credentials:</strong> Supabase Dashboard → Settings → API</p>
+        </div>
+        
+        <!-- Debug Console -->
+        <div id="debugConsole" class="table-card hidden">
+            <h3 class="chart-title">Debug Console</h3>
+            <div id="debugOutput" class="debug-output">No debug data yet. Click "Test Connection" or "Refresh Data".</div>
+        </div>
+        
+        <!-- System Overview -->
+        <div class="table-card">
+            <h3 class="chart-title">📊 System Overview (All Time)</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Sessions</div>
+                    <div class="stat-value" id="overviewSessions">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Messages Sent</div>
+                    <div class="stat-value" id="overviewMessages">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Days</div>
+                    <div class="stat-value" id="overviewResponses">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">System Age</div>
+                    <div class="stat-value" id="overviewAge">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Key Metrics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Active Users (7 days)</div>
+                <div class="stat-value" id="totalUsers">-</div>
+                <div class="stat-trend">👥 Weekly active</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Words Taught Today</div>
+                <div class="stat-value" id="wordsToday">-</div>
+                <div class="stat-trend">📚 Today's sessions</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Response Rate (7d)</div>
+                <div class="stat-value" id="responseRate">-</div>
+                <div class="stat-trend">💬 User engagement</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Avg. Daily Words</div>
+                <div class="stat-value" id="avgEngagement">-</div>
+                <div class="stat-trend">📈 Per active user</div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">Daily Activity (Last 7 Days)</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">Difficulty Distribution</h3>
+                <canvas id="difficultyChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">Exercise Completion Rate</h3>
+                <canvas id="exerciseChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">Top Performers</h3>
+                <canvas id="performersChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- User Table -->
+        <div class="table-card">
+            <h3 class="chart-title">👥 Active Users (Click name for details!)</h3>
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Words Learned</th>
+                        <th>Streak (30d)</th>
+                        <th>Response Rate (7d)</th>
+                        <th>Last Active</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="6" class="loading">Loading data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Most Difficult Words -->
+        <div class="table-card">
+            <h3 class="chart-title">Most Challenging Words</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Translation</th>
+                        <th>Times Taught</th>
+                        <th>Marked "Hard"</th>
+                        <th>Difficulty %</th>
+                    </tr>
+                </thead>
+                <tbody id="difficultWordsTable">
+                    <tr>
+                        <td colspan="5" class="loading">Loading data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- User Detail View (Hidden by default) -->
+    <div id="userDetailView" class="dashboard view-transition" style="display: none;">
+        <header>
+            <button class="back-btn" onclick="showMainDashboard()">← Back to Dashboard</button>
+            <h1 id="userDetailName">User Details</h1>
+            <p class="subtitle" id="userDetailSubtitle">Loading user information...</p>
+        </header>
+        
+        <!-- Alert Area for User Detail -->
+        <div id="userAlertArea"></div>
+        
+        <!-- User Overview Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Words Learned</div>
+                <div class="stat-value" id="userTotalWords">-</div>
+                <div class="stat-trend">📚 Vocabulary</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Current Streak</div>
+                <div class="stat-value" id="userStreak">-</div>
+                <div class="stat-trend">🔥 Days</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value" id="userSuccessRate">-</div>
+                <div class="stat-trend">✅ Accuracy</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Days Active</div>
+                <div class="stat-value" id="userDaysActive">-</div>
+                <div class="stat-trend">📅 Learning days</div>
+            </div>
+        </div>
+        
+        <!-- Progress Timeline Chart -->
+        <div class="chart-card">
+            <h3 class="chart-title">📈 Learning Progress (Last 30 Days)</h3>
+            <canvas id="userProgressChart"></canvas>
+        </div>
+        
+        <!-- Charts Grid -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">🎯 Word Mastery by Difficulty</h3>
+                <canvas id="userMasteryChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">⏰ Learning Patterns (by Hour)</h3>
+                <canvas id="userPatternsChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Challenging Words Table -->
+        <div class="table-card">
+            <h3 class="chart-title">❌ Most Challenging Words</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Translation</th>
+                        <th>Mistakes</th>
+                        <th>Last Mistake</th>
+                        <th>Difficulty</th>
+                    </tr>
+                </thead>
+                <tbody id="userChallengingWordsBody">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Recent Activity Table -->
+        <div class="table-card">
+            <h3 class="chart-title">📝 Recent Activity (Last 20 Sessions)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Word</th>
+                        <th>Translation</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody id="userRecentActivityBody">
+                    <tr>
+                        <td colspan="4" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Detailed Insights -->
+        <div class="table-card">
+            <h3 class="chart-title">💡 Detailed Insights</h3>
+            <div class="insights-grid" id="userInsightsGrid">
+                <div class="insight-item">
+                    <div class="insight-label">Total Mistakes</div>
+                    <div class="insight-value" id="userTotalMistakes">-</div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-label">Words This Week</div>
+                    <div class="insight-value" id="userWordsWeek">-</div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-label">Words This Month</div>
+                    <div class="insight-value" id="userWordsMonth">-</div>
+                </div>
+                <div class="insight-item">
+                    <div class="insight-label">Avg. Daily Words</div>
+                    <div class="insight-value" id="userAvgDaily">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================================
+        // CONFIGURATION REQUIRED
+        // ============================================================================
+        // Replace the placeholders below with your actual Supabase credentials
+        // Find these in your Supabase project settings under API
+        
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';  // e.g., 'https://xxxxx.supabase.co'
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';  // Your anon/public key
+        
+        // ============================================================================
+        // APPLICATION STATE
+        // ============================================================================
+        let supabase = null;
+        let debugMode = false;
+        let debugLogs = [];
+        let currentUserId = null;
+        let currentView = 'dashboard'; // 'dashboard' or 'user-detail'
+        
+        // Chart instances
+        let activityChart = null;
+        let difficultyChart = null;
+        let exerciseChart = null;
+        let performersChart = null;
+        let userProgressChart = null;
+        let userMasteryChart = null;
+        let userPatternsChart = null;
+        
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+        function initializeSupabase() {
+            const configInstructions = document.getElementById('configInstructions');
+            
+            if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') {
+                const error = 'Supabase URL is not configured. Please update the SUPABASE_URL constant in the HTML file.';
+                console.error(error);
+                if (configInstructions) {
+                    configInstructions.classList.remove('hidden');
+                }
+                showAlert(error, 'warning');
+                logDebug('❌ Configuration error', { error });
+                return false;
+            }
+            
+            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
+                const error = 'Supabase anon key is not configured. Please update the SUPABASE_ANON_KEY constant in the HTML file.';
+                console.error(error);
+                if (configInstructions) {
+                    configInstructions.classList.remove('hidden');
+                }
+                showAlert(error, 'warning');
+                logDebug('❌ Configuration error', { error });
+                return false;
+            }
+            
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                logDebug('✓ Supabase client initialized successfully', {
+                    url: SUPABASE_URL,
+                    keyPrefix: SUPABASE_ANON_KEY.substring(0, 20) + '...'
+                });
+                
+                if (configInstructions) {
+                    configInstructions.classList.add('hidden');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize Supabase:', error);
+                showAlert('Failed to initialize Supabase client: ' + error.message, 'error');
+                logDebug('❌ Supabase initialization failed', { error: error.message });
+                return false;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            logDebug('Dashboard initialization started');
+            logDebug('Supabase library status: ' + (window.supabase ? 'Loaded' : 'Not loaded'));
+            
+            if (initializeSupabase()) {
+                initializeCharts();
+                loadData();
+                handleHashChange(); // Handle initial URL hash
+            }
+        });
+        
+        // Handle browser navigation
+        window.addEventListener('hashchange', handleHashChange);
+        
+        function handleHashChange() {
+            const hash = window.location.hash;
+            if (hash.startsWith('#user/')) {
+                const userId = hash.replace('#user/', '');
+                if (currentUserId !== userId) {
+                    // Find user name from previous data or default
+                    showUserDetail(userId, 'User');
+                }
+            } else if (currentView === 'user-detail') {
+                showMainDashboard();
+            }
+        }
+        
+        // ============================================================================
+        // ROUTING & NAVIGATION
+        // ============================================================================
+        function showUserDetail(userId, userName, phoneNumber) {
+            currentUserId = userId;
+            currentView = 'user-detail';
+            
+            // Hide main dashboard
+            document.getElementById('mainDashboard').style.display = 'none';
+            
+            // Show user detail view
+            document.getElementById('userDetailView').style.display = 'block';
+            
+            // Update URL hash
+            window.location.hash = `user/${userId}`;
+            
+            // Update header
+            document.getElementById('userDetailName').textContent = `📊 ${userName}`;
+            document.getElementById('userDetailSubtitle').textContent = phoneNumber || 'Loading details...';
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+            
+            // Load user data
+            loadUserDetailData(userId, userName);
+        }
+        
+        function showMainDashboard() {
+            currentView = 'dashboard';
+            currentUserId = null;
+            
+            // Show main dashboard
+            document.getElementById('mainDashboard').style.display = 'block';
+            
+            // Hide user detail view
+            document.getElementById('userDetailView').style.display = 'none';
+            
+            // Clear URL hash
+            window.location.hash = '';
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+// This is Part 2 of the enhanced dashboard JavaScript
+// Append this after line 849 in german_vocab_dashboard_enhanced.html
+
+        // ============================================================================
+        // UTILITY FUNCTIONS
+        // ============================================================================
+        function logDebug(message, data = null) {
+            if (!debugMode && !window.location.hash.includes('debug')) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}`;
+            
+            debugLogs.push(logEntry);
+            
+            const debugOutput = document.getElementById('debugOutput');
+            if (debugOutput) {
+                debugOutput.textContent += logEntry + '\n\n';
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+            
+            console.log(message, data);
+        }
+        
+        function showAlert(message, type = 'info') {
+            const alertArea = currentView === 'user-detail' ? 
+                document.getElementById('userAlertArea') : 
+                document.getElementById('alertArea');
+            
+            const icons = {
+                warning: '⚠️',
+                error: '❌',
+                success: '✅',
+                info: 'ℹ️'
+            };
+            
+            if (alertArea) {
+                alertArea.innerHTML = `
+                    <div class="alert alert-${type}">
+                        <span class="alert-icon">${icons[type] || 'ℹ️'}</span>
+                        ${message}
+                    </div>
+                `;
+            }
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugConsole = document.getElementById('debugConsole');
+            if (debugConsole) {
+                debugConsole.classList.toggle('hidden');
+            }
+            logDebug('Debug mode ' + (debugMode ? 'enabled' : 'disabled'));
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            
+            return date.toLocaleDateString();
+        }
+        
+        function formatTimestamp(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function getStatusBadge(dateString) {
+            if (!dateString) return 'badge-danger';
+            const diffHours = (new Date() - new Date(dateString)) / 3600000;
+            if (diffHours < 24) return 'badge-success';
+            if (diffHours < 168) return 'badge-warning';
+            return 'badge-danger';
+        }
+        
+        function getStatusText(dateString) {
+            if (!dateString) return 'Inactive';
+            const diffHours = (new Date() - new Date(dateString)) / 3600000;
+            if (diffHours < 24) return 'Active';
+            if (diffHours < 168) return 'Recent';
+            return 'Inactive';
+        }
+        
+        // ============================================================================
+        // API FUNCTIONS
+        // ============================================================================
+        async function callFunction(functionName, params = {}) {
+            logDebug(`Calling RPC function: ${functionName}`, params);
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    logDebug(`✗ Cannot call ${functionName} - Supabase not initialized`);
+                    return null;
+                }
+            }
+            
+            try {
+                const { data, error } = await supabase.rpc(functionName, params);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                logDebug(`✓ ${functionName} returned successfully`, {
+                    dataType: Array.isArray(data) ? 'array' : typeof data,
+                    length: Array.isArray(data) ? data.length : null,
+                    data: data
+                });
+                
+                return data;
+            } catch (error) {
+                const errorMessage = error.message || error.toString();
+                console.error(`RPC function ${functionName} failed:`, error);
+                logDebug(`✗ ${functionName} failed`, {
+                    error: errorMessage,
+                    details: error,
+                    hint: error.hint || 'Ensure the database function exists and is accessible.',
+                    code: error.code || 'unknown'
+                });
+                return null;
+            }
+        }
+        
+        async function testConnection() {
+            logDebug('Testing Supabase connection...');
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    return;
+                }
+            }
+            
+            try {
+                logDebug('Attempting to query users table...');
+                
+                const { data, error, count } = await supabase
+                    .from('users')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                const message = `✅ Connection successful! Database is accessible. ${count !== null ? 'Found ' + count + ' users.' : ''}`;
+                showAlert(message, 'success');
+                logDebug('✓ Connection test passed', { 
+                    count,
+                    timestamp: new Date().toISOString()
+                });
+                
+                return true;
+            } catch (error) {
+                const errorMessage = error.message || error.toString();
+                console.error('Connection test failed:', error);
+                showAlert(`❌ Connection failed: ${errorMessage}`, 'error');
+                logDebug('✗ Connection test failed', {
+                    error: errorMessage,
+                    details: error,
+                    hint: error.hint || 'Check your Supabase URL and API key.'
+                });
+                return false;
+            }
+        }
+        
+        async function diagnoseDataIssue() {
+            logDebug('=== DIAGNOSTIC MODE ===');
+            showAlert('🔬 Running diagnostics...', 'info');
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    return;
+                }
+            }
+            
+            try {
+                const now = new Date();
+                const timezoneOffset = now.getTimezoneOffset();
+                const localTime = now.toLocaleString();
+                const utcTime = now.toISOString();
+                
+                logDebug('Timezone Information:', {
+                    localTime,
+                    utcTime,
+                    timezoneOffset: timezoneOffset + ' minutes',
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                });
+                
+                logDebug('--- Testing get_dashboard_stats ---');
+                const stats = await callFunction('get_dashboard_stats');
+                logDebug('Stats returned:', JSON.stringify(stats, null, 2));
+                
+                showAlert('✅ Diagnostic complete! Check the debug console for details.', 'success');
+                
+            } catch (error) {
+                logDebug('Diagnostic error:', error);
+                showAlert('❌ Diagnostic failed: ' + error.message, 'error');
+            }
+        }
+        
+        // ============================================================================
+        // DATA LOADING - MAIN DASHBOARD
+        // ============================================================================
+        async function loadData() {
+            logDebug('Starting initial data load...');
+            
+            if (!supabase) {
+                const initialized = initializeSupabase();
+                if (!initialized) {
+                    logDebug('Cannot load data - Supabase initialization failed');
+                    return;
+                }
+            }
+            
+            try {
+                logDebug('=== Starting data load ===');
+                showAlert('🔄 Loading dashboard data...', 'info');
+                
+                const [
+                    stats,
+                    userProgress,
+                    dailyActivity,
+                    difficulty,
+                    exerciseAccuracy,
+                    difficultWords,
+                    systemSummary
+                ] = await Promise.all([
+                    callFunction('get_dashboard_stats'),
+                    callFunction('get_user_progress_summary'),
+                    callFunction('get_daily_activity'),
+                    callFunction('get_difficulty_distribution'),
+                    callFunction('get_exercise_accuracy'),
+                    callFunction('get_difficult_words'),
+                    callFunction('get_all_sessions_summary')
+                ]);
+                
+                let updateCount = 0;
+                
+                if (stats) {
+                    updateStats(stats);
+                    updateCount++;
+                }
+                if (systemSummary) {
+                    updateSystemOverview(systemSummary);
+                    updateCount++;
+                }
+                if (userProgress) {
+                    updateUsersTable(userProgress);
+                    updatePerformersChart(userProgress);
+                    updateCount++;
+                }
+                if (dailyActivity) {
+                    updateActivityChart(dailyActivity);
+                    updateCount++;
+                }
+                if (difficulty) {
+                    updateDifficultyChart(difficulty);
+                    updateCount++;
+                }
+                if (exerciseAccuracy) {
+                    updateExerciseChart(exerciseAccuracy);
+                    updateCount++;
+                }
+                if (difficultWords) {
+                    updateDifficultWordsTable(difficultWords);
+                    updateCount++;
+                }
+                
+                logDebug('=== Data load complete ===', {
+                    sectionsLoaded: updateCount
+                });
+                
+                if (updateCount > 0) {
+                    showAlert(`✅ Dashboard updated successfully! Loaded ${updateCount} data sections.`, 'success');
+                } else {
+                    showAlert('⚠️ No data was loaded. Please check your database functions.', 'warning');
+                }
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                const errorMessage = error.message || error.toString();
+                showAlert(`❌ Error loading data: ${errorMessage}`, 'error');
+                logDebug('FATAL ERROR during data load', {
+                    error: errorMessage,
+                    details: error
+                });
+            }
+        }
+        
+        function updateStats(stats) {
+            logDebug('updateStats called with:', stats);
+            const data = Array.isArray(stats) ? stats[0] : stats;
+            logDebug('Parsed stats data:', data);
+            
+            document.getElementById('totalUsers').textContent = data.total_users || 0;
+            document.getElementById('wordsToday').textContent = data.words_today || 0;
+            document.getElementById('responseRate').textContent = `${data.response_rate || 0}%`;
+            document.getElementById('avgEngagement').textContent = data.avg_engagement || 0;
+        }
+        
+        function updateSystemOverview(summary) {
+            logDebug('updateSystemOverview called with:', summary);
+            const data = Array.isArray(summary) ? summary[0] : summary;
+            logDebug('Parsed system data:', data);
+            
+            if (!data) return;
+            
+            const totalSessions = data.total_sessions || 0;
+            const sessionTypes = data.session_types || {};
+            const messagesSent = (sessionTypes.learn || 0) + (sessionTypes.exercise || 0) + (sessionTypes.review || 0);
+            const activeDays = data.dates_with_data || 0;
+            
+            if (data.earliest_date) {
+                const earliest = new Date(data.earliest_date);
+                const daysSince = Math.floor((new Date() - earliest) / (1000 * 60 * 60 * 24));
+                document.getElementById('overviewAge').textContent = daysSince === 0 ? 'Today' : `${daysSince}d`;
+            } else {
+                document.getElementById('overviewAge').textContent = 'New';
+            }
+            
+            document.getElementById('overviewSessions').textContent = totalSessions;
+            document.getElementById('overviewMessages').textContent = messagesSent;
+            document.getElementById('overviewResponses').textContent = activeDays;
+        }
+        
+        function updateUsersTable(users) {
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No users found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>
+                        <strong class="clickable-name" onclick="showUserDetail('${user.user_id}', '${user.name || 'User'}', '${user.phone_number || ''}')">
+                            ${user.name || 'N/A'}
+                        </strong>
+                        <br>
+                        <small>${user.phone_number || 'N/A'}</small>
+                    </td>
+                    <td>${user.words_learned || 0}</td>
+                    <td>🔥 ${user.current_streak || 0} days</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${user.response_rate || 0}%"></div>
+                        </div>
+                        <small>${user.response_rate || 0}%</small>
+                    </td>
+                    <td>${formatDate(user.last_active)}</td>
+                    <td>
+                        <span class="badge ${getStatusBadge(user.last_active)}">
+                            ${getStatusText(user.last_active)}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateDifficultWordsTable(words) {
+            const tbody = document.getElementById('difficultWordsTable');
+            
+            if (!words || words.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No difficult words data yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = words.map(word => `
+                <tr>
+                    <td><strong>${word.word || 'N/A'}</strong></td>
+                    <td>${word.translation || 'N/A'}</td>
+                    <td>${word.times_taught || 0}</td>
+                    <td>${word.marked_hard || 0}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${word.difficulty_pct || 0}%; background: ${word.difficulty_pct > 50 ? '#dc3545' : '#ffc107'};"></div>
+                        </div>
+                        <small>${word.difficulty_pct || 0}%</small>
+                    </td>
+                </tr>
+            `).join('');
+        }
+// This is Part 3 of the enhanced dashboard JavaScript
+// Append this after part2
+
+        // ============================================================================
+        // CHART INITIALIZATION & UPDATES
+        // ============================================================================
+        function initializeCharts() {
+            // Activity Chart
+            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            activityChart = new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Messages Sent',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Responses',
+                        data: [],
+                        borderColor: '#764ba2',
+                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            
+            // Difficulty Chart
+            const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
+            difficultyChart = new Chart(difficultyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            
+            // Exercise Chart
+            const exerciseCtx = document.getElementById('exerciseChart').getContext('2d');
+            exerciseChart = new Chart(exerciseCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Completion Rate %',
+                        data: [],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+            
+            // Performers Chart
+            const performersCtx = document.getElementById('performersChart').getContext('2d');
+            performersChart = new Chart(performersCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Words Learned',
+                        data: [],
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        function updateActivityChart(data) {
+            if (!data || data.length === 0) {
+                activityChart.data.labels = ['No data'];
+                activityChart.data.datasets[0].data = [0];
+                activityChart.data.datasets[1].data = [0];
+                activityChart.update();
+                return;
+            }
+            
+            const labels = data.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }));
+            const messagesSent = data.map(d => parseInt(d.messages_sent) || 0);
+            const responsesReceived = data.map(d => parseInt(d.responses_received) || 0);
+            
+            activityChart.data.labels = labels;
+            activityChart.data.datasets[0].data = messagesSent;
+            activityChart.data.datasets[1].data = responsesReceived;
+            activityChart.update();
+        }
+        
+        function updateDifficultyChart(data) {
+            if (!data || data.length === 0) {
+                difficultyChart.data.labels = ['No data'];
+                difficultyChart.data.datasets[0].data = [1];
+                difficultyChart.update();
+                return;
+            }
+            
+            const labels = data.map(d => d.difficulty || 'Unknown');
+            const counts = data.map(d => parseInt(d.count) || 0);
+            
+            difficultyChart.data.labels = labels;
+            difficultyChart.data.datasets[0].data = counts;
+            difficultyChart.update();
+        }
+        
+        function updateExerciseChart(data) {
+            if (!data || data.length === 0) {
+                exerciseChart.data.labels = ['No data'];
+                exerciseChart.data.datasets[0].data = [0];
+                exerciseChart.update();
+                return;
+            }
+            
+            const labels = data.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }));
+            const rates = data.map(d => parseFloat(d.completion_rate) || 0);
+            
+            exerciseChart.data.labels = labels;
+            exerciseChart.data.datasets[0].data = rates;
+            exerciseChart.update();
+        }
+        
+        function updatePerformersChart(users) {
+            if (!users || users.length === 0) {
+                performersChart.data.labels = ['No data'];
+                performersChart.data.datasets[0].data = [0];
+                performersChart.update();
+                return;
+            }
+            
+            const topUsers = users
+                .sort((a, b) => (b.words_learned || 0) - (a.words_learned || 0))
+                .slice(0, 5);
+            
+            const names = topUsers.map(u => u.name || 'Unknown');
+            const wordsCount = topUsers.map(u => parseInt(u.words_learned) || 0);
+            
+            performersChart.data.labels = names;
+            performersChart.data.datasets[0].data = wordsCount;
+            performersChart.update();
+        }
+        
+        // ============================================================================
+        // USER DETAIL PAGE - DATA LOADING
+        // ============================================================================
+        async function loadUserDetailData(userId, userName) {
+            logDebug(`Loading detail data for user: ${userName} (${userId})`);
+            
+            try {
+                showAlert('🔄 Loading user details...', 'info');
+                
+                const [stats, challenging, timeline, activity, mastery, patterns] = await Promise.all([
+                    callFunction('get_user_detailed_stats', { p_user_id: userId }),
+                    callFunction('get_user_challenging_words', { p_user_id: userId, p_limit: 10 }),
+                    callFunction('get_user_progress_timeline', { p_user_id: userId, p_days: 30 }),
+                    callFunction('get_user_recent_activity', { p_user_id: userId, p_limit: 20 }),
+                    callFunction('get_user_word_mastery', { p_user_id: userId }),
+                    callFunction('get_user_learning_patterns', { p_user_id: userId })
+                ]);
+                
+                if (stats && stats.length > 0) {
+                    updateUserStats(stats[0]);
+                }
+                
+                if (timeline) {
+                    updateUserProgressChart(timeline);
+                }
+                
+                if (challenging) {
+                    updateUserChallengingWords(challenging);
+                }
+                
+                if (activity) {
+                    updateUserRecentActivity(activity);
+                }
+                
+                if (mastery) {
+                    updateUserMasteryChart(mastery);
+                }
+                
+                if (patterns) {
+                    updateUserPatternsChart(patterns);
+                }
+                
+                showAlert(`✅ User details loaded successfully!`, 'success');
+                logDebug('User detail data loaded successfully');
+                
+            } catch (error) {
+                console.error('Error loading user detail:', error);
+                showAlert(`❌ Error loading user details: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateUserStats(stats) {
+            document.getElementById('userTotalWords').textContent = stats.total_words_learned || 0;
+            document.getElementById('userStreak').textContent = stats.current_streak || 0;
+            document.getElementById('userSuccessRate').textContent = `${stats.success_rate || 0}%`;
+            document.getElementById('userDaysActive').textContent = stats.days_active || 0;
+            
+            // Update insights
+            document.getElementById('userTotalMistakes').textContent = stats.total_mistakes || 0;
+            document.getElementById('userWordsWeek').textContent = stats.words_this_week || 0;
+            document.getElementById('userWordsMonth').textContent = stats.words_this_month || 0;
+            document.getElementById('userAvgDaily').textContent = stats.average_session_words || 0;
+            
+            // Update subtitle
+            const memberSince = stats.member_since ? new Date(stats.member_since).toLocaleDateString() : 'Unknown';
+            document.getElementById('userDetailSubtitle').textContent = 
+                `Member since ${memberSince} • ${stats.total_sessions || 0} total sessions`;
+        }
+        
+        function updateUserProgressChart(timeline) {
+            // Destroy existing chart if it exists
+            if (userProgressChart) {
+                userProgressChart.destroy();
+            }
+            
+            const ctx = document.getElementById('userProgressChart').getContext('2d');
+            
+            if (!timeline || timeline.length === 0) {
+                userProgressChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['No data'],
+                        datasets: [{
+                            label: 'Words Learned',
+                            data: [0],
+                            borderColor: '#667eea',
+                            tension: 0.4
+                        }]
+                    }
+                });
+                return;
+            }
+            
+            const labels = timeline.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const wordsData = timeline.map(d => d.words_learned || 0);
+            const successRates = timeline.map(d => d.success_rate || 0);
+            
+            userProgressChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Words Learned',
+                        data: wordsData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        yAxisID: 'y',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Success Rate %',
+                        data: successRates,
+                        borderColor: '#28a745',
+                        yAxisID: 'y1',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left'
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateUserMasteryChart(mastery) {
+            if (userMasteryChart) {
+                userMasteryChart.destroy();
+            }
+            
+            const ctx = document.getElementById('userMasteryChart').getContext('2d');
+            
+            if (!mastery || mastery.length === 0) {
+                userMasteryChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['No data'],
+                        datasets: [{ data: [1], backgroundColor: ['#ccc'] }]
+                    }
+                });
+                return;
+            }
+            
+            const labels = mastery.map(m => m.difficulty || 'Unknown');
+            const data = mastery.map(m => m.total_words || 0);
+            const colors = ['#28a745', '#ffc107', '#dc3545'];
+            
+            userMasteryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { 
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const masteryData = mastery[context.dataIndex];
+                                    return `${context.label}: ${context.formattedValue} words (${masteryData.mastery_percentage}% mastered)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateUserPatternsChart(patterns) {
+            if (userPatternsChart) {
+                userPatternsChart.destroy();
+            }
+            
+            const ctx = document.getElementById('userPatternsChart').getContext('2d');
+            
+            if (!patterns || patterns.length === 0) {
+                userPatternsChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['No data'],
+                        datasets: [{ label: 'Sessions', data: [0] }]
+                    }
+                });
+                return;
+            }
+            
+            const labels = patterns.map(p => {
+                const hour = p.hour_of_day;
+                return hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour-12}pm`;
+            });
+            const sessions = patterns.map(p => p.session_count || 0);
+            const successRates = patterns.map(p => p.avg_success_rate || 0);
+            
+            userPatternsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Study Sessions',
+                        data: sessions,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Success Rate %',
+                        data: successRates,
+                        type: 'line',
+                        borderColor: '#28a745',
+                        yAxisID: 'y1',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left'
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateUserChallengingWords(words) {
+            const tbody = document.getElementById('userChallengingWordsBody');
+            
+            if (!words || words.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No challenging words yet - great job!</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = words.map(word => `
+                <tr>
+                    <td><strong>${word.word || 'N/A'}</strong></td>
+                    <td>${word.translation || 'N/A'}</td>
+                    <td>${word.mistake_count || 0}</td>
+                    <td>${formatTimestamp(word.last_mistake)}</td>
+                    <td><span class="badge badge-${word.difficulty_level === 'easy' ? 'success' : word.difficulty_level === 'moderate' ? 'warning' : 'danger'}">${word.difficulty_level || 'Unknown'}</span></td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateUserRecentActivity(activities) {
+            const tbody = document.getElementById('userRecentActivityBody');
+            
+            if (!activities || activities.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No recent activity</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = activities.map(activity => `
+                <tr>
+                    <td>${formatTimestamp(activity.created_at)}</td>
+                    <td><strong>${activity.word || 'N/A'}</strong></td>
+                    <td>${activity.translation || 'N/A'}</td>
+                    <td>
+                        ${activity.was_correct ? 
+                            '<span class="activity-indicator correct"></span><span class="badge badge-success">Correct</span>' : 
+                            activity.had_mistake ? 
+                            '<span class="activity-indicator incorrect"></span><span class="badge badge-danger">Incorrect</span>' : 
+                            '<span class="activity-indicator neutral"></span><span class="badge">No response</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
