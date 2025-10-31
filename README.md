@@ -46,13 +46,65 @@ SELECT * FROM get_user_mistakes_by_type('USER-ID-HERE');
 SELECT * FROM get_user_mistake_analysis('USER-ID-HERE');
 ```
 
-## 📱 Frontend Integration
+## 📱 Two Dashboard Options
 
-See `user_dashboard.html` for a complete HTML/JavaScript example showing how to:
-- Call all 12 functions
-- Display user statistics
-- Show mistake analytics with charts
-- Format data for dashboard display
+### Option 1: Admin Dashboard (Recommended)
+**File:** `admin_dashboard.html`
+
+**Features:**
+- 📊 **Main View:** Shows all users in a grid with basic stats
+- 👤 **Click any user card** → See their complete analytics
+- 🔄 Easy navigation between all users and individual details
+- 📈 Overall platform statistics (total users, active today, etc.)
+
+**Best for:** Admin panel, monitoring multiple users, platform overview
+
+### Option 2: Single User Dashboard
+**File:** `user_dashboard.html`
+
+**Features:**
+- 🎯 Deep-dive into one user's data
+- 📊 Comprehensive charts and visualizations
+- 📅 Detailed timeline and activity logs
+- ❌ Mistake analytics with multiple chart types
+
+**Best for:** User profile page, individual user reports, detailed analysis
+
+## 🔧 Setup Instructions
+
+### 1. Deploy Database Functions
+See `DEPLOY.md` for detailed steps
+
+### 2. Setup Dashboard(s)
+
+**For Admin Dashboard:**
+```javascript
+// Edit admin_dashboard.html line 526-527:
+const SUPABASE_URL = 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-key';
+```
+
+**For Single User Dashboard:**
+```javascript
+// Edit user_dashboard.html line 241-242:
+const SUPABASE_URL = 'https://your-project.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-key';
+```
+
+### 3. Open in Browser
+- `admin_dashboard.html` - Opens with user grid, click any user
+- `user_dashboard.html` - Enter user ID manually
+
+## 🎨 Dashboard Comparison
+
+| Feature | Admin Dashboard | Single User Dashboard |
+|---------|----------------|---------------------|
+| User List | ✅ Shows all users | ❌ Manual ID entry |
+| Click Navigation | ✅ Click to view details | ❌ N/A |
+| Overall Stats | ✅ Platform-wide | ❌ Single user only |
+| Detail Depth | ⭐⭐⭐ Good | ⭐⭐⭐⭐⭐ Comprehensive |
+| Charts | ⭐⭐⭐ Key metrics | ⭐⭐⭐⭐⭐ All visualizations |
+| Use Case | Monitor all users | Deep-dive analysis |
 
 ## 🔧 Technical Details
 
@@ -71,7 +123,20 @@ See `user_dashboard.html` for a complete HTML/JavaScript example showing how to:
 - Proper table aliasing throughout
 - Optimized subqueries
 
+## 📂 File Structure
+
+```
+project/
+├── user_detail_functions_updated.sql  # Database functions (deploy first)
+├── admin_dashboard.html               # Multi-user dashboard
+├── user_dashboard.html                # Single user dashboard
+├── README.md                          # This file
+├── DEPLOY.md                          # Deployment guide
+└── SUMMARY.md                         # Project summary
+```
+
 ---
 
 **Deploy time:** 2 minutes  
-**Status:** ✅ Ready for production
+**Status:** ✅ Ready for production  
+**Recommended:** Use `admin_dashboard.html` for the best experience
