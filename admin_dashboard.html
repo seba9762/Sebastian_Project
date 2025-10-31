@@ -827,9 +827,19 @@
         // HELPER FUNCTIONS
         // ============================================
         async function callFunction(functionName, userId, param2) {
-            const params = param2 !== undefined 
-                ? { p_user_id: userId, p_limit: param2, p_days: param2 }
-                : { p_user_id: userId };
+            const params = { p_user_id: userId };
+            
+            // Add second parameter with correct name based on function
+            if (param2 !== undefined) {
+                // Functions that use p_days
+                if (functionName.includes('timeline') || functionName.includes('trends')) {
+                    params.p_days = param2;
+                } 
+                // Functions that use p_limit
+                else {
+                    params.p_limit = param2;
+                }
+            }
 
             const { data, error } = await supabase.rpc(functionName, params);
             if (error) throw error;
