@@ -39,9 +39,9 @@ DECLARE
 BEGIN
     -- Calculate streaks from learning_sessions
     FOR v_current_date IN 
-        SELECT DISTINCT DATE(created_at) as session_date
-        FROM learning_sessions
-        WHERE user_id = p_user_id
+        SELECT DISTINCT DATE(ls.created_at) as session_date
+        FROM learning_sessions ls
+        WHERE ls.user_id = p_user_id
         ORDER BY session_date DESC
     LOOP
         -- Check if this is the first iteration
@@ -79,16 +79,16 @@ BEGIN
         u.id as user_id,
         u.name,
         u.phone_number,
-        COALESCE((SELECT COUNT(DISTINCT word_id) FROM user_progress WHERE user_id = u.id), 0)::BIGINT as total_words_learned,
+        COALESCE((SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = u.id), 0)::BIGINT as total_words_learned,
         v_current_streak,
         v_longest_streak,
-        COALESCE((SELECT COUNT(DISTINCT id) FROM learning_sessions WHERE user_id = u.id), 0)::BIGINT as total_sessions,
+        COALESCE((SELECT COUNT(DISTINCT ls.id) FROM learning_sessions ls WHERE ls.user_id = u.id), 0)::BIGINT as total_sessions,
         u.last_active,
         u.created_at as member_since,
         COALESCE((SELECT ROUND(
-            100.0 * COUNT(CASE WHEN user_response IS NOT NULL THEN 1 END) / 
+            100.0 * COUNT(CASE WHEN ls.user_response IS NOT NULL THEN 1 END) / 
             NULLIF(COUNT(*), 0), 1
-        ) FROM learning_sessions WHERE user_id = u.id), 0)::NUMERIC as response_rate,
+        ) FROM learning_sessions ls WHERE ls.user_id = u.id), 0)::NUMERIC as response_rate,
         -- Success rate: responses that don't have a mistake record
         COALESCE((SELECT ROUND(
             100.0 * COUNT(CASE WHEN NOT EXISTS(
@@ -98,24 +98,24 @@ BEGIN
         ) FROM user_responses ur WHERE ur.user_id = u.id), 0)::NUMERIC as success_rate,
         COALESCE((SELECT ROUND(AVG(session_count)::NUMERIC, 1)
          FROM (
-             SELECT DATE(created_at), COUNT(*) as session_count
-             FROM learning_sessions
-             WHERE user_id = u.id
-             GROUP BY DATE(created_at)
+             SELECT DATE(ls.created_at), COUNT(*) as session_count
+             FROM learning_sessions ls
+             WHERE ls.user_id = u.id
+             GROUP BY DATE(ls.created_at)
          ) sub), 0)::NUMERIC as average_session_words,
-        COALESCE((SELECT COUNT(*) FROM learning_sessions 
-         WHERE user_id = u.id 
-         AND created_at >= NOW() - INTERVAL '24 hours'), 0)::BIGINT as words_today,
-        COALESCE((SELECT COUNT(*) FROM learning_sessions 
-         WHERE user_id = u.id 
-         AND created_at >= NOW() - INTERVAL '7 days'), 0)::BIGINT as words_this_week,
-        COALESCE((SELECT COUNT(*) FROM learning_sessions 
-         WHERE user_id = u.id 
-         AND created_at >= NOW() - INTERVAL '30 days'), 0)::BIGINT as words_this_month,
-        COALESCE((SELECT COUNT(DISTINCT DATE(created_at)) 
-         FROM learning_sessions 
-         WHERE user_id = u.id), 0)::INTEGER as days_active,
-        COALESCE((SELECT COUNT(*) FROM user_mistakes WHERE user_id = u.id), 0)::BIGINT as total_mistakes
+        COALESCE((SELECT COUNT(*) FROM learning_sessions ls
+         WHERE ls.user_id = u.id 
+         AND ls.created_at >= NOW() - INTERVAL '24 hours'), 0)::BIGINT as words_today,
+        COALESCE((SELECT COUNT(*) FROM learning_sessions ls
+         WHERE ls.user_id = u.id 
+         AND ls.created_at >= NOW() - INTERVAL '7 days'), 0)::BIGINT as words_this_week,
+        COALESCE((SELECT COUNT(*) FROM learning_sessions ls
+         WHERE ls.user_id = u.id 
+         AND ls.created_at >= NOW() - INTERVAL '30 days'), 0)::BIGINT as words_this_month,
+        COALESCE((SELECT COUNT(DISTINCT DATE(ls.created_at)) 
+         FROM learning_sessions ls
+         WHERE ls.user_id = u.id), 0)::INTEGER as days_active,
+        COALESCE((SELECT COUNT(*) FROM user_mistakes um WHERE um.user_id = u.id), 0)::BIGINT as total_mistakes
     FROM users u
     WHERE u.id = p_user_id;
 END;
@@ -315,8 +315,8 @@ BEGIN
     RETURN QUERY
     SELECT 
         (SELECT COUNT(*) FROM vocabulary)::INTEGER as total_vocabulary,
-        (SELECT COUNT(DISTINCT word_id) FROM user_progress WHERE user_id = p_user_id)::INTEGER as learned_vocabulary,
-        ROUND(100.0 * (SELECT COUNT(DISTINCT word_id) FROM user_progress WHERE user_id = p_user_id) / 
+        (SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = p_user_id)::INTEGER as learned_vocabulary,
+        ROUND(100.0 * (SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = p_user_id) / 
               NULLIF((SELECT COUNT(*) FROM vocabulary), 0), 1)::NUMERIC as learning_percentage,
         (SELECT v.difficulty_level 
          FROM user_progress up 
@@ -340,10 +340,10 @@ BEGIN
          GROUP BY v.id, v.german_word
          ORDER BY COUNT(um.id) DESC
          LIMIT 1) as most_difficult_word,
-        (SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Berlin')::INTEGER
-         FROM learning_sessions
-         WHERE user_id = p_user_id
-         GROUP BY EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Berlin')
+        (SELECT EXTRACT(HOUR FROM ls.created_at AT TIME ZONE 'Europe/Berlin')::INTEGER
+         FROM learning_sessions ls
+         WHERE ls.user_id = p_user_id
+         GROUP BY EXTRACT(HOUR FROM ls.created_at AT TIME ZONE 'Europe/Berlin')
          ORDER BY COUNT(*) DESC
          LIMIT 1) as best_study_hour;
 END;
@@ -372,8 +372,8 @@ BEGIN
     ),
     total_mistakes AS (
         SELECT COUNT(*)::NUMERIC as total
-        FROM user_mistakes
-        WHERE user_id = p_user_id
+        FROM user_mistakes um
+        WHERE um.user_id = p_user_id
     )
     SELECT 
         mc.type as mistake_type,
@@ -404,8 +404,8 @@ BEGIN
     ),
     total_mistakes AS (
         SELECT COUNT(*)::NUMERIC as total
-        FROM user_mistakes
-        WHERE user_id = p_user_id
+        FROM user_mistakes um
+        WHERE um.user_id = p_user_id
     )
     SELECT 
         mc.category as mistake_category,
@@ -436,8 +436,8 @@ BEGIN
     ),
     total_mistakes AS (
         SELECT COUNT(*)::NUMERIC as total
-        FROM user_mistakes
-        WHERE user_id = p_user_id
+        FROM user_mistakes um
+        WHERE um.user_id = p_user_id
     )
     SELECT 
         mc.sev as severity,
@@ -468,7 +468,7 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     SELECT 
-        (SELECT COUNT(*) FROM user_mistakes WHERE user_id = p_user_id)::BIGINT as total_mistakes,
+        (SELECT COUNT(*) FROM user_mistakes um WHERE um.user_id = p_user_id)::BIGINT as total_mistakes,
         (SELECT um.mistake_type 
          FROM user_mistakes um 
          WHERE um.user_id = p_user_id 
@@ -496,9 +496,9 @@ BEGIN
             COUNT(*) DESC
          LIMIT 1) as highest_severity,
         (SELECT COUNT(*) 
-         FROM user_mistakes 
-         WHERE user_id = p_user_id 
-         AND created_at >= NOW() - INTERVAL '7 days')::BIGINT as recent_mistakes;
+         FROM user_mistakes um
+         WHERE um.user_id = p_user_id 
+         AND um.created_at >= NOW() - INTERVAL '7 days')::BIGINT as recent_mistakes;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
