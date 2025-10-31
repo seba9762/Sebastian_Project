@@ -77,8 +77,8 @@ BEGIN
     RETURN QUERY
     SELECT 
         u.id as user_id,
-        u.name,
-        u.phone_number,
+        u.name::TEXT,
+        u.phone_number::TEXT,
         COALESCE((SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = u.id), 0)::BIGINT as total_words_learned,
         v_current_streak,
         v_longest_streak,
@@ -133,11 +133,11 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     SELECT 
-        v.german_word as word,
-        v.english_translation as translation,
+        v.german_word::TEXT as word,
+        v.english_translation::TEXT as translation,
         COUNT(um.id)::INTEGER as mistake_count,
         MAX(um.created_at) as last_mistake,
-        COALESCE(v.difficulty_level, 'Unknown') as difficulty_level
+        COALESCE(v.difficulty_level, 'Unknown')::TEXT as difficulty_level
     FROM user_mistakes um
     JOIN vocabulary v ON um.word_id = v.id
     WHERE um.user_id = p_user_id
@@ -210,8 +210,8 @@ BEGIN
     SELECT 
         ls.id,
         ls.created_at,
-        COALESCE(v.german_word, 'Unknown') as word,
-        COALESCE(v.english_translation, '') as translation,
+        COALESCE(v.german_word, 'Unknown')::TEXT as word,
+        COALESCE(v.english_translation, '')::TEXT as translation,
         EXISTS(SELECT 1 FROM user_responses ur WHERE ur.session_id = ls.id) as had_response,
         -- Was correct if there's a response but no mistake for that response
         EXISTS(SELECT 1 FROM user_responses ur 
@@ -238,7 +238,7 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     SELECT 
-        COALESCE(v.difficulty_level, 'Unknown') as difficulty,
+        COALESCE(v.difficulty_level, 'Unknown')::TEXT as difficulty,
         COUNT(DISTINCT up.word_id)::INTEGER as total_words,
         COUNT(DISTINCT up.word_id)::INTEGER as words_in_progress,
         COALESCE((SELECT COUNT(*) 
@@ -318,7 +318,7 @@ BEGIN
         (SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = p_user_id)::INTEGER as learned_vocabulary,
         ROUND(100.0 * (SELECT COUNT(DISTINCT up.word_id) FROM user_progress up WHERE up.user_id = p_user_id) / 
               NULLIF((SELECT COUNT(*) FROM vocabulary), 0), 1)::NUMERIC as learning_percentage,
-        (SELECT v.difficulty_level 
+        (SELECT v.difficulty_level::TEXT
          FROM user_progress up 
          JOIN vocabulary v ON up.word_id = v.id
          LEFT JOIN user_mistakes um ON um.word_id = up.word_id AND um.user_id = p_user_id
@@ -326,14 +326,14 @@ BEGIN
          GROUP BY v.difficulty_level
          ORDER BY COUNT(DISTINCT up.word_id) DESC, COUNT(um.id) ASC
          LIMIT 1) as strongest_difficulty,
-        (SELECT v.difficulty_level 
+        (SELECT v.difficulty_level::TEXT
          FROM user_mistakes um
          JOIN vocabulary v ON um.word_id = v.id
          WHERE um.user_id = p_user_id
          GROUP BY v.difficulty_level
          ORDER BY COUNT(um.id) DESC
          LIMIT 1) as weakest_difficulty,
-        (SELECT v.german_word
+        (SELECT v.german_word::TEXT
          FROM user_mistakes um
          JOIN vocabulary v ON um.word_id = v.id
          WHERE um.user_id = p_user_id
@@ -364,7 +364,7 @@ BEGIN
     RETURN QUERY
     WITH mistake_counts AS (
         SELECT 
-            COALESCE(um.mistake_type, 'Unknown') as type,
+            COALESCE(um.mistake_type, 'Unknown')::TEXT as type,
             COUNT(*) as type_count
         FROM user_mistakes um
         WHERE um.user_id = p_user_id
@@ -376,7 +376,7 @@ BEGIN
         WHERE um.user_id = p_user_id
     )
     SELECT 
-        mc.type as mistake_type,
+        mc.type::TEXT as mistake_type,
         mc.type_count as count,
         ROUND(100.0 * mc.type_count / NULLIF(tm.total, 0), 1) as percentage
     FROM mistake_counts mc
@@ -396,7 +396,7 @@ BEGIN
     RETURN QUERY
     WITH mistake_counts AS (
         SELECT 
-            COALESCE(um.mistake_category, 'Unknown') as category,
+            COALESCE(um.mistake_category, 'Unknown')::TEXT as category,
             COUNT(*) as category_count
         FROM user_mistakes um
         WHERE um.user_id = p_user_id
@@ -408,7 +408,7 @@ BEGIN
         WHERE um.user_id = p_user_id
     )
     SELECT 
-        mc.category as mistake_category,
+        mc.category::TEXT as mistake_category,
         mc.category_count as count,
         ROUND(100.0 * mc.category_count / NULLIF(tm.total, 0), 1) as percentage
     FROM mistake_counts mc
@@ -428,7 +428,7 @@ BEGIN
     RETURN QUERY
     WITH mistake_counts AS (
         SELECT 
-            COALESCE(um.severity, 'Unknown') as sev,
+            COALESCE(um.severity, 'Unknown')::TEXT as sev,
             COUNT(*) as sev_count
         FROM user_mistakes um
         WHERE um.user_id = p_user_id
@@ -440,7 +440,7 @@ BEGIN
         WHERE um.user_id = p_user_id
     )
     SELECT 
-        mc.sev as severity,
+        mc.sev::TEXT as severity,
         mc.sev_count as count,
         ROUND(100.0 * mc.sev_count / NULLIF(tm.total, 0), 1) as percentage
     FROM mistake_counts mc
@@ -469,19 +469,19 @@ BEGIN
     RETURN QUERY
     SELECT 
         (SELECT COUNT(*) FROM user_mistakes um WHERE um.user_id = p_user_id)::BIGINT as total_mistakes,
-        (SELECT um.mistake_type 
+        (SELECT um.mistake_type::TEXT
          FROM user_mistakes um 
          WHERE um.user_id = p_user_id 
          GROUP BY um.mistake_type 
          ORDER BY COUNT(*) DESC 
          LIMIT 1) as most_common_type,
-        (SELECT um.mistake_category 
+        (SELECT um.mistake_category::TEXT
          FROM user_mistakes um 
          WHERE um.user_id = p_user_id 
          GROUP BY um.mistake_category 
          ORDER BY COUNT(*) DESC 
          LIMIT 1) as most_common_category,
-        (SELECT um.severity 
+        (SELECT um.severity::TEXT
          FROM user_mistakes um 
          WHERE um.user_id = p_user_id 
          AND um.severity IS NOT NULL
@@ -514,7 +514,7 @@ BEGIN
     SELECT 
         DATE(um.created_at AT TIME ZONE 'Europe/Berlin') as date,
         COUNT(*)::INTEGER as mistake_count,
-        (SELECT mistake_type 
+        (SELECT mistake_type::TEXT
          FROM user_mistakes um2 
          WHERE um2.user_id = p_user_id 
          AND DATE(um2.created_at AT TIME ZONE 'Europe/Berlin') = DATE(um.created_at AT TIME ZONE 'Europe/Berlin')
