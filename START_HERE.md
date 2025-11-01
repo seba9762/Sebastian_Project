@@ -11,7 +11,7 @@ All analytics functions updated to use the correct column names:
 - ✅ `word_id` (not `vocabulary_id`)
 - ✅ `created_at` (not `mistake_date`)
 
-## ⚡ Quick Start (3 Steps)
+## ⚡ Quick Start (4 Steps)
 
 ### Step 1: Clean Up Old Functions (IMPORTANT!)
 
@@ -25,23 +25,34 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/cleanup_existing_functions.sql
 
 ### Step 2: Deploy the Functions
 
-Run **either** of these commands (they're identical):
-
 ```bash
-# Option A: Migration file (recommended for tracking)
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
-
-# Option B: SQL file (also works)
-psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/user_analytics_functions.sql
 ```
 
-### Step 3: Test It Works
+### Step 3: Fix UUID User IDs (If Needed)
+
+**⚠️ IMPORTANT**: If your `users.id` column is type `uuid`, run this:
 
 ```bash
-psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_dashboard_stats();"
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/fix_uuid_user_ids.sql
 ```
 
-✅ **Expected**: Function returns results without errors  
+**Skip this step if**:
+- Your user IDs are `bigint` or `integer`
+- Check with: `SELECT data_type FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'id';`
+
+### Step 4: Test It Works
+
+```bash
+# Test basic function
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_dashboard_stats();"
+
+# Test UUID-dependent function
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1;"
+```
+
+✅ **Expected**: Both functions return results without errors  
+❌ **If "type uuid does not match bigint"**: See [UUID_FIX_GUIDE.md](UUID_FIX_GUIDE.md) (Step 3)  
 ❌ **If "function is not unique" error**: See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md)  
 ❌ **If other errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 

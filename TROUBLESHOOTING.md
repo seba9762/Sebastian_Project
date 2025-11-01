@@ -2,7 +2,58 @@
 
 ## Common Errors and Solutions
 
-### Error 0: "function name is not unique" ⚠️ NEW
+### Error 0: "type uuid does not match expected type bigint" ⚠️ CRITICAL
+
+**Error Message:**
+```
+ERROR: 42804: structure of query does not match function result type
+DETAIL: Returned type uuid does not match expected type bigint in column 1.
+```
+
+**Cause:**
+- Your database uses `uuid` for user IDs
+- The analytics functions were written expecting `bigint` user IDs
+- Type mismatch when returning user_id column
+
+**Solution:**
+Apply the UUID fix AFTER the main migration:
+
+```bash
+# Step 1: Clean up (if needed)
+psql -h HOST -U USER -d DB -f sql/cleanup_existing_functions.sql
+
+# Step 2: Deploy main migration
+psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
+
+# Step 3: Apply UUID fix (IMPORTANT!)
+psql -h HOST -U USER -d DB -f sql/fix_uuid_user_ids.sql
+
+# Step 4: Test
+psql -h HOST -U USER -d DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1;"
+```
+
+**Detailed Guide:**
+See [UUID_FIX_GUIDE.md](UUID_FIX_GUIDE.md) for complete instructions.
+
+**Check Your User ID Type:**
+```sql
+SELECT data_type 
+FROM information_schema.columns 
+WHERE table_name = 'users' AND column_name = 'id';
+-- If result is 'uuid', you need the fix
+-- If result is 'bigint' or 'integer', skip the UUID fix
+```
+
+**Affected Functions:**
+- get_user_progress_summary()
+- get_user_streak(user_id)
+- get_user_response_rate(user_id, days)
+- calculate_user_accuracy(user_id)
+- get_user_weekly_performance(user_id)
+
+---
+
+### Error 1: "function name is not unique"
 
 **Error Message:**
 ```
@@ -25,7 +76,10 @@ psql -h HOST -U USER -d DB -f sql/cleanup_existing_functions.sql
 # Step 2: Deploy the corrected functions
 psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
 
-# Step 3: Test
+# Step 3: If using UUID user IDs, apply UUID fix
+psql -h HOST -U USER -d DB -f sql/fix_uuid_user_ids.sql
+
+# Step 4: Test
 psql -h HOST -U USER -d DB -c "SELECT * FROM get_dashboard_stats();"
 ```
 
