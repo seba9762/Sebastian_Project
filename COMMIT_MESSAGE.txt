@@ -1,0 +1,96 @@
+fix: update analytics functions for schema changes (word_id, created_at)
+
+This commit implements a comprehensive migration to fix all analytics SQL
+functions to align with the updated database schema.
+
+## Schema Changes Applied
+
+All 13 analytics functions updated to use:
+- learning_sessions.word_id (was: vocabulary_id)
+- user_mistakes.word_id (was: vocabulary_id)
+- user_mistakes.created_at (was: mistake_date)
+
+Success logic now based on absence of user_mistakes records (not is_correct flag).
+All date operations use Europe/Berlin timezone consistently.
+
+## Files Created
+
+### Migration
+- supabase/migrations/20251101095455_fix_analytics_functions.sql (755 lines)
+  * DROP statements for all 13 functions
+  * CREATE OR REPLACE with updated column names
+  * Comprehensive documentation and comments
+  * SECURITY DEFINER with SET search_path = public
+
+### Tests
+- sql/tests/test_analytics_functions.sql (305 lines)
+  * Tests all 13 analytics functions
+  * Schema compliance checks
+  * Data sample validation
+  * Performance timing tests
+
+- sql/tests/verify_schema_compliance.sql (314 lines)
+  * Pre-migration schema verification
+  * Checks for correct column names
+  * Identifies schema mismatches
+
+### Documentation
+- MIGRATIONS.md (417 lines) - Comprehensive migration guide
+- QUICKSTART.md (350 lines) - 5-minute deployment guide
+- DEPLOYMENT_CHECKLIST.md (350 lines) - Step-by-step checklist
+- README.md (350 lines) - Project overview and setup
+- IMPLEMENTATION_SUMMARY.md (400 lines) - Complete implementation details
+
+### Modified
+- sql/README.md - Updated to reference migration file
+
+## Functions Updated
+
+1. get_dashboard_stats() - Dashboard statistics
+2. get_user_progress_summary() - User progress tracking
+3. get_daily_activity(days) - Daily activity metrics
+4. get_difficulty_distribution() - Difficulty distribution
+5. get_exercise_accuracy(days) - Exercise accuracy rates
+6. get_difficult_words(limit) - Most challenging words
+7. get_all_sessions_summary() - System-wide summary
+8. get_user_streak(user_id) - Learning streak calculation
+9. get_active_users_count(days) - Active user counts
+10. get_words_taught_today() - Today's statistics
+11. get_user_response_rate(user_id, days) - User response rate
+12. calculate_user_accuracy(user_id) - User accuracy metrics
+13. get_user_weekly_performance(user_id) - Weekly performance (NEW)
+
+## Testing
+
+Run the test suite to verify:
+```bash
+psql -h HOST -U USER -d DB -f sql/tests/test_analytics_functions.sql
+```
+
+## Deployment
+
+See QUICKSTART.md for 5-minute deployment or MIGRATIONS.md for comprehensive guide.
+
+```bash
+# Verify schema first
+psql -h HOST -U USER -d DB -f sql/tests/verify_schema_compliance.sql
+
+# Apply migration
+psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
+
+# Test
+psql -h HOST -U USER -d DB -f sql/tests/test_analytics_functions.sql
+```
+
+## Breaking Changes
+
+None - Functions have same signatures and return types.
+Only internal implementation changed to use new column names.
+
+## Rollback
+
+Restore from backup if issues occur. See MIGRATIONS.md for details.
+
+Fixes: Analytics functions "column does not exist" errors
+Implements: Schema migration tracking and comprehensive testing
+Adds: Full documentation suite and deployment guides
