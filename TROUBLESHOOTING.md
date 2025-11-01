@@ -2,18 +2,26 @@
 
 ## Common Errors and Solutions
 
-### Error 0: "type uuid does not match expected type bigint" ⚠️ CRITICAL
+### Error 0: Type Mismatch (UUID or VARCHAR) ⚠️ CRITICAL
 
-**Error Message:**
+**Error Messages:**
+
 ```
 ERROR: 42804: structure of query does not match function result type
 DETAIL: Returned type uuid does not match expected type bigint in column 1.
 ```
 
+OR
+
+```
+ERROR: 42804: structure of query does not match function result type
+DETAIL: Returned type character varying(100) does not match expected type text in column 2.
+```
+
 **Cause:**
-- Your database uses `uuid` for user IDs
-- The analytics functions were written expecting `bigint` user IDs
-- Type mismatch when returning user_id column
+- Your database uses `uuid` for user IDs (expecting `bigint`)
+- Your database uses `varchar` for text columns like name/phone_number (expecting `text`)
+- Type mismatch when returning columns
 
 **Solution:**
 Apply the UUID fix AFTER the main migration:
@@ -35,13 +43,17 @@ psql -h HOST -U USER -d DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1
 **Detailed Guide:**
 See [UUID_FIX_GUIDE.md](UUID_FIX_GUIDE.md) for complete instructions.
 
-**Check Your User ID Type:**
+**Check Your Schema Types:**
 ```sql
-SELECT data_type 
+-- Check user ID type
+SELECT column_name, data_type, udt_name
 FROM information_schema.columns 
-WHERE table_name = 'users' AND column_name = 'id';
--- If result is 'uuid', you need the fix
--- If result is 'bigint' or 'integer', skip the UUID fix
+WHERE table_name = 'users' 
+AND column_name IN ('id', 'name', 'phone_number');
+
+-- If 'id' is 'uuid' → you need the fix
+-- If 'name' or 'phone_number' is 'character varying' → you need the fix
+-- If both are 'bigint'/'integer' and 'text' → skip the UUID fix
 ```
 
 **Affected Functions:**

@@ -1,10 +1,14 @@
 -- ============================================================================
--- Fix: Update Analytics Functions to Use UUID for User IDs
+-- Fix: Update Analytics Functions to Use UUID for User IDs + VARCHAR Casting
 -- ============================================================================
 -- This script updates functions that have user_id parameters or return types
 -- to use UUID instead of BIGINT, matching the actual database schema.
+-- 
+-- Also adds explicit casts for VARCHAR columns to TEXT to avoid type mismatches.
 --
--- Run this AFTER the main migration if your users table uses UUID for IDs.
+-- Run this AFTER the main migration if:
+-- - Your users table uses UUID for IDs
+-- - Your users table has VARCHAR for name/phone_number
 -- ============================================================================
 
 -- Drop existing functions with bigint parameters
@@ -79,8 +83,8 @@ BEGIN
     )
     SELECT 
         u.id,
-        u.name,
-        u.phone_number,
+        u.name::text,                -- Cast varchar to text
+        u.phone_number::text,        -- Cast varchar to text
         COALESCE(uw.word_count, 0),
         COALESCE(us.streak_days, 0)::integer,
         COALESCE(ROUND((urr.successful_sessions::numeric / NULLIF(urr.total_sessions, 0)) * 100, 1), 0),

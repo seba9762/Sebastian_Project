@@ -29,17 +29,29 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/cleanup_existing_functions.sql
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
 ```
 
-### Step 3: Fix UUID User IDs (If Needed)
+### Step 3: Fix Type Mismatches (If Needed)
 
-**⚠️ IMPORTANT**: If your `users.id` column is type `uuid`, run this:
+**⚠️ IMPORTANT**: If your `users` table has UUID or VARCHAR types, run this:
 
 ```bash
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/fix_uuid_user_ids.sql
 ```
 
-**Skip this step if**:
-- Your user IDs are `bigint` or `integer`
-- Check with: `SELECT data_type FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'id';`
+**This fixes**:
+- ✅ UUID user IDs (instead of bigint)
+- ✅ VARCHAR text columns (instead of text)
+
+**Skip this step only if**:
+- Your user IDs are `bigint` or `integer` AND
+- Your name/phone_number are `text` (not varchar)
+
+**Check your schema**:
+```sql
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'users' 
+AND column_name IN ('id', 'name', 'phone_number');
+```
 
 ### Step 4: Test It Works
 
@@ -52,7 +64,8 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_user_progress_su
 ```
 
 ✅ **Expected**: Both functions return results without errors  
-❌ **If "type uuid does not match bigint"**: See [UUID_FIX_GUIDE.md](UUID_FIX_GUIDE.md) (Step 3)  
+❌ **If "type uuid does not match bigint"**: You need Step 3 (UUID fix)  
+❌ **If "varchar does not match text"**: You need Step 3 (VARCHAR fix) - included in same script!  
 ❌ **If "function is not unique" error**: See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md)  
 ❌ **If other errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 

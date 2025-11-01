@@ -1,15 +1,23 @@
-# UUID Fix Guide: User ID Type Mismatch
+# UUID & VARCHAR Fix Guide: Type Mismatches
 
-## Error You Encountered
+## Errors You May Encounter
 
+### Error 1: UUID Type Mismatch
 ```
 ERROR: 42804: structure of query does not match function result type
 DETAIL: Returned type uuid does not match expected type bigint in column 1.
 ```
 
+### Error 2: VARCHAR Type Mismatch
+```
+ERROR: 42804: structure of query does not match function result type
+DETAIL: Returned type character varying(100) does not match expected type text in column 2.
+```
+
 ## Root Cause
 
-Your database uses `uuid` for user IDs (in the `users` table), but the analytics functions were written expecting `bigint` user IDs.
+1. Your database uses `uuid` for user IDs (in the `users` table), but the analytics functions were written expecting `bigint` user IDs.
+2. Your database uses `varchar(100)` for text columns like `name` and `phone_number`, but the functions expect `text`.
 
 ## ✅ Solution: Apply UUID Fix
 
@@ -31,12 +39,13 @@ psql -h HOST -U USER -d DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1
 
 ## What the UUID Fix Does
 
-The `sql/fix_uuid_user_ids.sql` script updates 5 functions that deal with user IDs:
+The `sql/fix_uuid_user_ids.sql` script updates 5 functions that deal with user IDs and text columns:
 
 ### Functions Updated
 
 1. **get_user_progress_summary()**
    - Changed return type: `user_id bigint` → `user_id uuid`
+   - Added casts: `name::text` and `phone_number::text` (handles varchar)
 
 2. **get_user_streak(user_id_param)**
    - Changed parameter: `bigint` → `uuid`
