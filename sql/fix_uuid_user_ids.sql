@@ -1,14 +1,17 @@
 -- ============================================================================
--- Fix: Update Analytics Functions to Use UUID for User IDs + VARCHAR Casting
+-- Fix: Update Analytics Functions for All Type Mismatches
 -- ============================================================================
--- This script updates functions that have user_id parameters or return types
--- to use UUID instead of BIGINT, matching the actual database schema.
+-- This script updates functions to match your actual database schema types:
 -- 
--- Also adds explicit casts for VARCHAR columns to TEXT to avoid type mismatches.
+-- 1. UUID instead of BIGINT for user IDs
+-- 2. TEXT casts for VARCHAR columns (name, phone_number)
+-- 3. TIMESTAMPTZ casts for DATE columns (session_date)
 --
--- Run this AFTER the main migration if:
--- - Your users table uses UUID for IDs
--- - Your users table has VARCHAR for name/phone_number
+-- Run this AFTER the main migration if your database has:
+-- - users.id: uuid (not bigint)
+-- - users.name: varchar (not text)
+-- - users.phone_number: varchar (not text)
+-- - learning_sessions.session_date: date (not timestamptz)
 -- ============================================================================
 
 -- Drop existing functions with bigint parameters
@@ -88,7 +91,7 @@ BEGIN
         COALESCE(uw.word_count, 0),
         COALESCE(us.streak_days, 0)::integer,
         COALESCE(ROUND((urr.successful_sessions::numeric / NULLIF(urr.total_sessions, 0)) * 100, 1), 0),
-        la.last_session
+        la.last_session::timestamptz -- Cast date to timestamp with time zone
     FROM users u
     LEFT JOIN user_words uw ON u.id = uw.user_id
     LEFT JOIN user_streaks us ON u.id = us.user_id

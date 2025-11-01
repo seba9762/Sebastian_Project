@@ -2,7 +2,7 @@
 
 ## Common Errors and Solutions
 
-### Error 0: Type Mismatch (UUID or VARCHAR) ⚠️ CRITICAL
+### Error 0: Type Mismatch (UUID, VARCHAR, or DATE) ⚠️ CRITICAL
 
 **Error Messages:**
 
@@ -18,13 +18,21 @@ ERROR: 42804: structure of query does not match function result type
 DETAIL: Returned type character varying(100) does not match expected type text in column 2.
 ```
 
+OR
+
+```
+ERROR: 42804: structure of query does not match function result type
+DETAIL: Returned type date does not match expected type timestamp with time zone in column 7.
+```
+
 **Cause:**
 - Your database uses `uuid` for user IDs (expecting `bigint`)
 - Your database uses `varchar` for text columns like name/phone_number (expecting `text`)
+- Your database uses `date` for session_date (expecting `timestamp with time zone`)
 - Type mismatch when returning columns
 
 **Solution:**
-Apply the UUID fix AFTER the main migration:
+Apply the type fix script AFTER the main migration (handles ALL type issues):
 
 ```bash
 # Step 1: Clean up (if needed)
@@ -33,7 +41,7 @@ psql -h HOST -U USER -d DB -f sql/cleanup_existing_functions.sql
 # Step 2: Deploy main migration
 psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
 
-# Step 3: Apply UUID fix (IMPORTANT!)
+# Step 3: Apply type fixes (UUID + VARCHAR + DATE - all in one!)
 psql -h HOST -U USER -d DB -f sql/fix_uuid_user_ids.sql
 
 # Step 4: Test
@@ -41,19 +49,22 @@ psql -h HOST -U USER -d DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1
 ```
 
 **Detailed Guide:**
-See [UUID_FIX_GUIDE.md](UUID_FIX_GUIDE.md) for complete instructions.
+See [ALL_TYPE_FIXES.md](ALL_TYPE_FIXES.md) for complete instructions.
 
 **Check Your Schema Types:**
 ```sql
--- Check user ID type
-SELECT column_name, data_type, udt_name
+-- Check all relevant column types
+SELECT 
+    table_name, column_name, data_type, udt_name
 FROM information_schema.columns 
-WHERE table_name = 'users' 
-AND column_name IN ('id', 'name', 'phone_number');
+WHERE (table_name = 'users' AND column_name IN ('id', 'name', 'phone_number'))
+   OR (table_name = 'learning_sessions' AND column_name = 'session_date')
+ORDER BY table_name, column_name;
 
--- If 'id' is 'uuid' → you need the fix
--- If 'name' or 'phone_number' is 'character varying' → you need the fix
--- If both are 'bigint'/'integer' and 'text' → skip the UUID fix
+-- If you see:
+-- users.id → uuid (not bigint) → you need the fix
+-- users.name → character varying (not text) → you need the fix
+-- learning_sessions.session_date → date (not timestamptz) → you need the fix
 ```
 
 **Affected Functions:**
