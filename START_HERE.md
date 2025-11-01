@@ -66,8 +66,33 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_user_progress_su
 ✅ **Expected**: Both functions return results without errors  
 ❌ **If "type uuid does not match bigint"**: You need Step 3 (UUID fix)  
 ❌ **If "varchar does not match text"**: You need Step 3 (VARCHAR fix) - included in same script!  
+❌ **If "date does not match timestamptz"**: You need Step 3 (DATE fix) - included in same script!  
 ❌ **If "function is not unique" error**: See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md)  
 ❌ **If other errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
+## 🎨 Step 5: View Your Dashboard (NEW!)
+
+After functions are deployed, use the HTML dashboards to visualize your data:
+
+### Setup the Dashboards
+
+1. **Get your Supabase credentials**
+   - Go to Supabase → Settings → API
+   - Copy "Project URL" and "anon/public key"
+
+2. **Configure the HTML files**
+   - Open `dashboard.html` and `user-details.html`
+   - Replace the placeholder credentials:
+   ```javascript
+   const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+   const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+   ```
+
+3. **Open the dashboard**
+   - Open `dashboard.html` in your browser
+   - Click on users to see detailed statistics
+
+📖 **Full Guide**: See [HTML_SETUP_GUIDE.md](HTML_SETUP_GUIDE.md) for complete instructions
 
 ## 📚 Documentation Quick Links
 
