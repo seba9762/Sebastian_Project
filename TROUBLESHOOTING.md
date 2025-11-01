@@ -2,6 +2,48 @@
 
 ## Common Errors and Solutions
 
+### Error 0: "function name is not unique" ⚠️ NEW
+
+**Error Message:**
+```
+ERROR: 42725: function name "get_daily_activity" is not unique
+HINT: Specify the argument list to select the function unambiguously.
+```
+
+**Cause:**
+- Multiple versions of the function exist with different signatures
+- Previous deployments created functions with different parameter types
+- The DROP statement can't determine which version to drop
+
+**Solution:**
+Run the cleanup script FIRST, then deploy:
+
+```bash
+# Step 1: Clean up all old function versions
+psql -h HOST -U USER -d DB -f sql/cleanup_existing_functions.sql
+
+# Step 2: Deploy the corrected functions
+psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
+
+# Step 3: Test
+psql -h HOST -U USER -d DB -c "SELECT * FROM get_dashboard_stats();"
+```
+
+**Detailed Guide:**
+See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md) for complete instructions.
+
+**Manual Check:**
+```sql
+-- See all versions of a function
+SELECT 
+    proname,
+    pg_get_function_identity_arguments(oid) as arguments
+FROM pg_proc 
+WHERE proname = 'get_daily_activity';
+```
+
+---
+
 ### Error 1: "column ls.vocabulary_id does not exist"
 
 **Error Message:**

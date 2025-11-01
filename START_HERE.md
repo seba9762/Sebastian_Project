@@ -1,8 +1,9 @@
 # 🚀 START HERE - Quick Deployment Guide
 
-## ✅ Error Fixed!
+## ✅ Errors Fixed!
 
-The "column vocabulary_id does not exist" error has been resolved.
+- ✅ "column vocabulary_id does not exist" - FIXED
+- ✅ "function name is not unique" - FIXED (cleanup script added)
 
 ## 📦 What You Have
 
@@ -10,9 +11,19 @@ All analytics functions updated to use the correct column names:
 - ✅ `word_id` (not `vocabulary_id`)
 - ✅ `created_at` (not `mistake_date`)
 
-## ⚡ Quick Start (2 Steps)
+## ⚡ Quick Start (3 Steps)
 
-### Step 1: Deploy the Functions
+### Step 1: Clean Up Old Functions (IMPORTANT!)
+
+If you get "function name is not unique" errors, run this first:
+
+```bash
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/cleanup_existing_functions.sql
+```
+
+**⚠️ Skip this step only if this is your first deployment.**
+
+### Step 2: Deploy the Functions
 
 Run **either** of these commands (they're identical):
 
@@ -24,14 +35,15 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f supabase/migrations/20251101095455_
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/user_analytics_functions.sql
 ```
 
-### Step 2: Test It Works
+### Step 3: Test It Works
 
 ```bash
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_dashboard_stats();"
 ```
 
 ✅ **Expected**: Function returns results without errors  
-❌ **If errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+❌ **If "function is not unique" error**: See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md)  
+❌ **If other errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ## 📚 Documentation Quick Links
 
