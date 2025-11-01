@@ -1,16 +1,34 @@
 -- ============================================================================
--- User Analytics Functions for German Vocabulary Learning System
+-- Migration: Fix Analytics Functions - Schema Column Updates
+-- Created: 2025-11-01
 -- ============================================================================
--- This script drops and recreates 12 analytics functions with SECURITY DEFINER
--- All functions use the updated schema:
---   - vocabulary: word, translation (no difficulty_level)
---   - user_progress: contains difficulty_level via joins
---   - user_mistakes: used for success rate (no row = successful response)
---   - learning_sessions: session_date with Europe/Berlin timezone
---   - No references to user_responses.is_correct
+-- 
+-- DESCRIPTION:
+-- This migration updates all 12 analytics functions to align with the updated
+-- database schema. The changes address column renames and ensure consistency
+-- across the German Vocabulary Learning System.
+--
+-- SCHEMA CHANGES APPLIED:
+-- 1. learning_sessions.vocabulary_id → learning_sessions.word_id
+-- 2. user_mistakes.vocabulary_id → user_mistakes.word_id  
+-- 3. user_mistakes.mistake_date → user_mistakes.created_at
+-- 4. Confirmed vocabulary.word and vocabulary.translation (already correct)
+-- 5. Difficulty level sourced from user_progress.difficulty_level (not vocabulary)
+-- 6. Success logic based on absence of user_mistakes records (no is_correct column)
+-- 7. All timestamps use AT TIME ZONE 'Europe/Berlin' for consistent date handling
+--
+-- SECURITY:
+-- All functions use SECURITY DEFINER to run with elevated privileges for
+-- cross-user analytics while maintaining proper access control.
+--
+-- ROLLBACK:
+-- To rollback, restore the previous function definitions with old column names:
+-- - word_id → vocabulary_id in learning_sessions and user_mistakes
+-- - created_at → mistake_date in user_mistakes
+--
 -- ============================================================================
 
--- Drop existing functions
+-- Drop existing functions to ensure clean recreation
 DROP FUNCTION IF EXISTS get_dashboard_stats();
 DROP FUNCTION IF EXISTS get_user_progress_summary();
 DROP FUNCTION IF EXISTS get_daily_activity(integer);
@@ -23,10 +41,12 @@ DROP FUNCTION IF EXISTS get_active_users_count(integer);
 DROP FUNCTION IF EXISTS get_words_taught_today();
 DROP FUNCTION IF EXISTS get_user_response_rate(bigint, integer);
 DROP FUNCTION IF EXISTS calculate_user_accuracy(bigint);
+DROP FUNCTION IF EXISTS get_user_weekly_performance(bigint);
 
 -- ============================================================================
 -- Function 1: get_dashboard_stats
 -- Returns key dashboard statistics for the last 7 days
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_dashboard_stats()
 RETURNS TABLE (
@@ -37,10 +57,12 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
     WITH berlin_now AS (
+        -- All date comparisons use Europe/Berlin timezone for consistency
         SELECT (NOW() AT TIME ZONE 'Europe/Berlin')::date AS today
     ),
     active_users AS (
@@ -50,7 +72,8 @@ BEGIN
         WHERE (ls.session_date AT TIME ZONE 'Europe/Berlin')::date >= bn.today - INTERVAL '7 days'
     ),
     words_today_count AS (
-        SELECT COUNT(DISTINCT ls.vocabulary_id) AS cnt
+        -- Changed from vocabulary_id to word_id
+        SELECT COUNT(DISTINCT ls.word_id) AS cnt
         FROM learning_sessions ls
         CROSS JOIN berlin_now bn
         WHERE (ls.session_date AT TIME ZONE 'Europe/Berlin')::date = bn.today
@@ -58,12 +81,14 @@ BEGIN
     message_stats AS (
         SELECT 
             COUNT(*) AS total_messages,
+            -- Success = no corresponding user_mistakes record
+            -- Uses word_id and created_at
             COUNT(DISTINCT CASE 
                 WHEN NOT EXISTS (
                     SELECT 1 FROM user_mistakes um 
                     WHERE um.user_id = ls.user_id 
-                    AND um.vocabulary_id = ls.vocabulary_id
-                    AND um.mistake_date >= ls.session_date
+                    AND um.word_id = ls.word_id
+                    AND um.created_at >= ls.session_date
                 ) 
                 THEN ls.id 
             END) AS successful_responses
@@ -78,7 +103,7 @@ BEGIN
             SELECT 
                 ls.user_id,
                 (ls.session_date AT TIME ZONE 'Europe/Berlin')::date AS session_day,
-                COUNT(DISTINCT ls.vocabulary_id) AS daily_words
+                COUNT(DISTINCT ls.word_id) AS daily_words
             FROM learning_sessions ls
             CROSS JOIN berlin_now bn
             WHERE (ls.session_date AT TIME ZONE 'Europe/Berlin')::date >= bn.today - INTERVAL '7 days'
@@ -100,6 +125,7 @@ $$;
 -- ============================================================================
 -- Function 2: get_user_progress_summary
 -- Returns detailed progress summary for all users
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_user_progress_summary()
 RETURNS TABLE (
@@ -113,6 +139,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -122,7 +149,7 @@ BEGIN
     user_words AS (
         SELECT 
             ls.user_id,
-            COUNT(DISTINCT ls.vocabulary_id) AS word_count
+            COUNT(DISTINCT ls.word_id) AS word_count
         FROM learning_sessions ls
         GROUP BY ls.user_id
     ),
@@ -143,8 +170,8 @@ BEGIN
                 WHERE NOT EXISTS (
                     SELECT 1 FROM user_mistakes um 
                     WHERE um.user_id = ls.user_id 
-                    AND um.vocabulary_id = ls.vocabulary_id
-                    AND um.mistake_date >= ls.session_date
+                    AND um.word_id = ls.word_id
+                    AND um.created_at >= ls.session_date
                 )
             ) AS successful_sessions
         FROM learning_sessions ls
@@ -180,6 +207,7 @@ $$;
 -- ============================================================================
 -- Function 3: get_daily_activity
 -- Returns daily activity metrics for the specified number of days
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_daily_activity(days integer DEFAULT 7)
 RETURNS TABLE (
@@ -190,6 +218,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -211,8 +240,8 @@ BEGIN
             WHERE NOT EXISTS (
                 SELECT 1 FROM user_mistakes um 
                 WHERE um.user_id = ls.user_id 
-                AND um.vocabulary_id = ls.vocabulary_id
-                AND um.mistake_date >= ls.session_date
+                AND um.word_id = ls.word_id
+                AND um.created_at >= ls.session_date
             )
         ), 0) AS responses_received,
         COALESCE(COUNT(DISTINCT ls.user_id), 0) AS active_users
@@ -226,6 +255,7 @@ $$;
 -- ============================================================================
 -- Function 4: get_difficulty_distribution
 -- Returns distribution of difficulty levels from user_progress
+-- Note: Difficulty is in user_progress, NOT in vocabulary table
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_difficulty_distribution()
 RETURNS TABLE (
@@ -234,6 +264,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -256,6 +287,7 @@ $$;
 -- ============================================================================
 -- Function 5: get_exercise_accuracy
 -- Returns exercise completion/accuracy rates by date
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_exercise_accuracy(days integer DEFAULT 7)
 RETURNS TABLE (
@@ -266,6 +298,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -287,8 +320,8 @@ BEGIN
             WHERE NOT EXISTS (
                 SELECT 1 FROM user_mistakes um 
                 WHERE um.user_id = ls.user_id 
-                AND um.vocabulary_id = ls.vocabulary_id
-                AND um.mistake_date >= ls.session_date
+                AND um.word_id = ls.word_id
+                AND um.created_at >= ls.session_date
             )
         ), 0) AS successful_exercises,
         COALESCE(
@@ -297,8 +330,8 @@ BEGIN
                     WHERE NOT EXISTS (
                         SELECT 1 FROM user_mistakes um 
                         WHERE um.user_id = ls.user_id 
-                        AND um.vocabulary_id = ls.vocabulary_id
-                        AND um.mistake_date >= ls.session_date
+                        AND um.word_id = ls.word_id
+                        AND um.created_at >= ls.session_date
                     )
                 )::numeric / NULLIF(COUNT(ls.id), 0)) * 100, 
                 1
@@ -315,6 +348,8 @@ $$;
 -- ============================================================================
 -- Function 6: get_difficult_words
 -- Returns the most challenging words based on mistake frequency
+-- Uses: word_id (not vocabulary_id)
+-- Note: vocabulary.word and vocabulary.translation (correct column names)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_difficult_words(limit_count integer DEFAULT 10)
 RETURNS TABLE (
@@ -326,6 +361,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -337,8 +373,8 @@ BEGIN
             COUNT(DISTINCT ls.id) AS times_taught,
             COUNT(DISTINCT um.id) AS mistake_count
         FROM vocabulary v
-        LEFT JOIN learning_sessions ls ON v.id = ls.vocabulary_id
-        LEFT JOIN user_mistakes um ON v.id = um.vocabulary_id
+        LEFT JOIN learning_sessions ls ON v.id = ls.word_id
+        LEFT JOIN user_mistakes um ON v.id = um.word_id
         GROUP BY v.id, v.word, v.translation
         HAVING COUNT(DISTINCT ls.id) > 0
     )
@@ -369,6 +405,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -413,6 +450,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -468,6 +506,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -496,6 +535,7 @@ $$;
 -- ============================================================================
 -- Function 10: get_words_taught_today
 -- Returns count of unique words taught today
+-- Uses: word_id (not vocabulary_id)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_words_taught_today()
 RETURNS TABLE (
@@ -505,6 +545,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -512,7 +553,7 @@ BEGIN
         SELECT (NOW() AT TIME ZONE 'Europe/Berlin')::date AS today
     )
     SELECT 
-        COUNT(DISTINCT ls.vocabulary_id)::bigint AS words_today,
+        COUNT(DISTINCT ls.word_id)::bigint AS words_today,
         COUNT(DISTINCT ls.user_id)::bigint AS unique_users,
         COUNT(*)::bigint AS total_sessions
     FROM learning_sessions ls
@@ -524,6 +565,7 @@ $$;
 -- ============================================================================
 -- Function 11: get_user_response_rate
 -- Calculates response success rate for a specific user
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION get_user_response_rate(user_id_param bigint, days integer DEFAULT 7)
 RETURNS TABLE (
@@ -535,6 +577,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -548,16 +591,16 @@ BEGIN
                 WHERE NOT EXISTS (
                     SELECT 1 FROM user_mistakes um 
                     WHERE um.user_id = ls.user_id 
-                    AND um.vocabulary_id = ls.vocabulary_id
-                    AND um.mistake_date >= ls.session_date
+                    AND um.word_id = ls.word_id
+                    AND um.created_at >= ls.session_date
                 )
             ) AS success_count,
             COUNT(DISTINCT um.id) AS mistake_total
         FROM learning_sessions ls
         CROSS JOIN berlin_now bn
         LEFT JOIN user_mistakes um ON ls.user_id = um.user_id 
-            AND ls.vocabulary_id = um.vocabulary_id
-            AND um.mistake_date >= ls.session_date
+            AND ls.word_id = um.word_id
+            AND um.created_at >= ls.session_date
         WHERE ls.user_id = user_id_param
         AND (ls.session_date AT TIME ZONE 'Europe/Berlin')::date >= bn.today - days
     )
@@ -574,6 +617,7 @@ $$;
 -- ============================================================================
 -- Function 12: calculate_user_accuracy
 -- Calculates overall accuracy for a user based on mistakes
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION calculate_user_accuracy(user_id_param bigint)
 RETURNS TABLE (
@@ -586,6 +630,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
@@ -596,21 +641,21 @@ BEGIN
                 WHERE NOT EXISTS (
                     SELECT 1 FROM user_mistakes um 
                     WHERE um.user_id = ls.user_id 
-                    AND um.vocabulary_id = ls.vocabulary_id
-                    AND um.mistake_date >= ls.session_date
+                    AND um.word_id = ls.word_id
+                    AND um.created_at >= ls.session_date
                 )
             ) AS successful,
             COUNT(DISTINCT um.id) AS failed
         FROM learning_sessions ls
         LEFT JOIN user_mistakes um ON ls.user_id = um.user_id 
-            AND ls.vocabulary_id = um.vocabulary_id
-            AND um.mistake_date >= ls.session_date
+            AND ls.word_id = um.word_id
+            AND um.created_at >= ls.session_date
         WHERE ls.user_id = user_id_param
     ),
     most_difficult AS (
         SELECT v.word
         FROM user_mistakes um
-        JOIN vocabulary v ON um.vocabulary_id = v.id
+        JOIN vocabulary v ON um.word_id = v.id
         WHERE um.user_id = user_id_param
         GROUP BY v.id, v.word
         ORDER BY COUNT(*) DESC
@@ -629,5 +674,82 @@ END;
 $$;
 
 -- ============================================================================
--- End of User Analytics Functions
+-- Function 13: get_user_weekly_performance
+-- Returns weekly performance metrics for a specific user
+-- Uses: word_id (not vocabulary_id), created_at (not mistake_date)
 -- ============================================================================
+CREATE OR REPLACE FUNCTION get_user_weekly_performance(user_id_param bigint)
+RETURNS TABLE (
+    week_start date,
+    week_end date,
+    words_practiced bigint,
+    total_sessions bigint,
+    successful_sessions bigint,
+    accuracy_rate numeric,
+    active_days bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH berlin_now AS (
+        SELECT (NOW() AT TIME ZONE 'Europe/Berlin')::date AS today
+    ),
+    last_8_weeks AS (
+        SELECT 
+            generate_series(
+                (SELECT today - INTERVAL '8 weeks' FROM berlin_now),
+                (SELECT today FROM berlin_now),
+                '1 week'::interval
+            )::date AS week_start_date
+    ),
+    weekly_data AS (
+        SELECT 
+            lw.week_start_date,
+            lw.week_start_date + INTERVAL '6 days' AS week_end_date,
+            COUNT(DISTINCT ls.word_id) AS words_count,
+            COUNT(*) AS sessions_count,
+            COUNT(*) FILTER (
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM user_mistakes um 
+                    WHERE um.user_id = ls.user_id 
+                    AND um.word_id = ls.word_id
+                    AND um.created_at >= ls.session_date
+                )
+            ) AS successful_count,
+            COUNT(DISTINCT (ls.session_date AT TIME ZONE 'Europe/Berlin')::date) AS active_days_count
+        FROM last_8_weeks lw
+        LEFT JOIN learning_sessions ls ON ls.user_id = user_id_param
+            AND (ls.session_date AT TIME ZONE 'Europe/Berlin')::date >= lw.week_start_date
+            AND (ls.session_date AT TIME ZONE 'Europe/Berlin')::date < lw.week_start_date + INTERVAL '7 days'
+        GROUP BY lw.week_start_date
+    )
+    SELECT 
+        wd.week_start_date,
+        wd.week_end_date::date,
+        wd.words_count::bigint,
+        wd.sessions_count::bigint,
+        wd.successful_count::bigint,
+        COALESCE(ROUND((wd.successful_count::numeric / NULLIF(wd.sessions_count, 0)) * 100, 1), 0),
+        wd.active_days_count::bigint
+    FROM weekly_data wd
+    ORDER BY wd.week_start_date DESC;
+END;
+$$;
+
+-- ============================================================================
+-- End of Migration
+-- ============================================================================
+
+-- Add helpful comment about what was changed
+COMMENT ON FUNCTION get_dashboard_stats IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date. All dates use Europe/Berlin timezone.';
+COMMENT ON FUNCTION get_user_progress_summary IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date.';
+COMMENT ON FUNCTION get_daily_activity IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date.';
+COMMENT ON FUNCTION get_difficulty_distribution IS 'Sources difficulty from user_progress table, not vocabulary table.';
+COMMENT ON FUNCTION get_exercise_accuracy IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date.';
+COMMENT ON FUNCTION get_difficult_words IS 'Updated to use word_id instead of vocabulary_id. Uses vocabulary.word and vocabulary.translation.';
+COMMENT ON FUNCTION get_user_response_rate IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date.';
+COMMENT ON FUNCTION calculate_user_accuracy IS 'Updated to use word_id instead of vocabulary_id and created_at instead of mistake_date.';
+COMMENT ON FUNCTION get_user_weekly_performance IS 'New function for weekly performance tracking. Uses word_id and created_at.';

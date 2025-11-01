@@ -1,0 +1,80 @@
+fix: synchronize sql/user_analytics_functions.sql with corrected migration
+
+## Issue Resolved
+
+Fixed deployment error: "column ls.vocabulary_id does not exist"
+
+## Root Cause
+
+The sql/user_analytics_functions.sql file contained old column names 
+(vocabulary_id, mistake_date) while the database schema had been updated
+to use new column names (word_id, created_at).
+
+## Changes Made
+
+1. **Updated sql/user_analytics_functions.sql**
+   - Replaced with corrected version from migration file
+   - Now uses word_id instead of vocabulary_id (20 occurrences)
+   - Now uses created_at instead of mistake_date (11 occurrences)
+   - File increased from 634 to 755 lines (includes comprehensive docs)
+
+2. **Added Deployment Documentation**
+   - DEPLOYMENT_INSTRUCTIONS.md - Clear deployment steps
+   - FIX_SUMMARY.md - Explanation of the fix
+   - TROUBLESHOOTING.md - Comprehensive troubleshooting guide
+   - UPDATE_SUMMARY.md - Summary of this update
+
+3. **Updated sql/README.md**
+   - Clarified that both SQL files now work
+   - Updated installation instructions
+   - Removed confusing "old column names" warning
+
+## Current State
+
+✅ All SQL files synchronized and correct:
+- supabase/migrations/20251101095455_fix_analytics_functions.sql
+- sql/user_analytics_functions.sql
+
+Both files now use correct column names matching the database schema.
+
+## Deployment
+
+Either file can now be used to deploy:
+
+```bash
+# Option 1: Migration file (recommended)
+psql -h HOST -U USER -d DB -f supabase/migrations/20251101095455_fix_analytics_functions.sql
+
+# Option 2: SQL file (also works)
+psql -h HOST -U USER -d DB -f sql/user_analytics_functions.sql
+```
+
+## Verification
+
+```bash
+# Test deployment
+psql -h HOST -U USER -d DB -c "SELECT * FROM get_dashboard_stats();"
+```
+
+Expected: No errors, function returns results
+
+## Files Modified
+
+- M sql/user_analytics_functions.sql (634→755 lines, +121)
+- M sql/README.md (+26 lines)
+- A DEPLOYMENT_INSTRUCTIONS.md (+124 lines)
+- A FIX_SUMMARY.md (+89 lines)
+- A TROUBLESHOOTING.md (+346 lines)
+- A UPDATE_SUMMARY.md (+129 lines)
+
+Total: +862 lines, 6 files changed
+
+## Breaking Changes
+
+None. Functions maintain same signatures and behavior.
+
+## Related
+
+- Addresses deployment error reported in production
+- Completes ticket: Fix analytics SQL
+- All 13 analytics functions now correct

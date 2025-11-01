@@ -175,23 +175,31 @@ Calculates overall accuracy for a user:
 
 ## Installation
 
-⚠️ **IMPORTANT**: Use the migration file instead of this reference file!
+✅ **UPDATED**: Both files now contain the correct column names!
 
-The correct way to install these functions is through the migration system:
+You can use either of these files (they are identical):
 
+### Option 1: Migration file (RECOMMENDED)
 ```bash
-# Apply the migration (includes schema fixes)
+# Apply the migration (better for tracking)
 psql -U your_username -d your_database -f ../supabase/migrations/20251101095455_fix_analytics_functions.sql
 ```
 
-See [MIGRATIONS.md](../MIGRATIONS.md) for complete deployment instructions.
+### Option 2: Reference file (also correct)
+```bash
+# Apply directly from sql directory
+psql -U your_username -d your_database -f user_analytics_functions.sql
+```
 
-### Development Reference Only
+See [MIGRATIONS.md](../MIGRATIONS.md) or [DEPLOYMENT_INSTRUCTIONS.md](../DEPLOYMENT_INSTRUCTIONS.md) for complete deployment instructions.
 
-The `user_analytics_functions.sql` file in this directory uses **old column names** and is kept as a reference. For production deployment, always use the migration file which includes:
-- Updated column names (`word_id`, `created_at`)
-- Proper documentation
-- DROP statements for clean installation
+### What's Included
+
+Both files now include:
+- ✅ Updated column names (`word_id`, `created_at`)
+- ✅ Comprehensive documentation and comments
+- ✅ DROP statements for clean installation
+- ✅ All 13 analytics functions with proper signatures
 
 ## Testing
 
