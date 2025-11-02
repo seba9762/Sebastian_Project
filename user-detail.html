@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="User Detail Page - German Vocabulary Learning System">
+    <title>User Detail - German Vocabulary</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>👤 User Detail</h1>
+            <p class="subtitle">Individual User Performance & History</p>
+            
+            <div class="button-group">
+                <a href="dashboard.html" class="btn btn-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </header>
+        
+        <div class="alert alert-info">
+            <span class="alert-icon">ℹ️</span>
+            This is a placeholder page. User detail functionality will be implemented in a future update.
+        </div>
+        
+        <section class="table-section">
+            <div class="table-card">
+                <h3 class="chart-title">User Information</h3>
+                <p class="text-muted">User ID: <span id="userId">Not specified</span></p>
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // Get user ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id');
+        const userIdElement = document.getElementById('userId');
+        
+        if (userId && userIdElement) {
+            userIdElement.textContent = userId;
+        }
+    </script>
+</body>
+</html>

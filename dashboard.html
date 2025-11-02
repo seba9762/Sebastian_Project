@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="German Vocabulary Learning System - Admin Dashboard">
+    <title>German Vocabulary - Admin Dashboard</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="assets/css/admin.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header Section -->
+        <header>
+            <h1>🇩🇪 German Vocabulary Learning System</h1>
+            <p class="subtitle">Admin Dashboard - Real-time Analytics</p>
+            
+            <div class="header-controls">
+                <div class="button-group">
+                    <button id="refreshBtn" class="btn btn-primary">
+                        🔄 Refresh Data
+                    </button>
+                    <button id="debugBtn" class="btn btn-secondary">
+                        🔍 Toggle Debug
+                    </button>
+                    <button id="testBtn" class="btn btn-secondary">
+                        🔌 Test Connection
+                    </button>
+                </div>
+                
+                <div class="export-controls">
+                    <button id="exportBtn" class="btn btn-success btn-icon" title="Export to CSV">
+                        📊 Export
+                    </button>
+                    <button id="printBtn" class="btn btn-secondary btn-icon" title="Print Dashboard">
+                        🖨️ Print
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Alert Area -->
+        <div id="alertArea"></div>
+        
+        <!-- Debug Output -->
+        <div id="debugCard" class="table-card hidden mb-3">
+            <h3 class="chart-title">Debug Information</h3>
+            <div id="debugOutput" class="debug-card">No debug data yet. Click "Test Connection" or "Refresh Data".</div>
+        </div>
+        
+        <!-- System Overview Section -->
+        <section class="overview-section">
+            <h2 class="section-title">📊 System Overview (All Time)</h2>
+            <div class="table-card">
+                <div class="overview-grid">
+                    <div>
+                        <div class="card-label">Total Sessions</div>
+                        <div class="card-value" id="overviewSessions">
+                            <span class="loading-placeholder">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-label">Messages Sent</div>
+                        <div class="card-value" id="overviewMessages" style="color: var(--secondary-color);">
+                            <span class="loading-placeholder">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-label">Active Days</div>
+                        <div class="card-value" id="overviewResponses" style="color: var(--success-color);">
+                            <span class="loading-placeholder">-</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-label">System Age</div>
+                        <div class="card-value" id="overviewAge" style="color: var(--warning-color);">
+                            <span class="loading-placeholder">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Key Metrics Section -->
+        <section class="overview-section">
+            <h2 class="section-title">📈 Key Metrics</h2>
+            <div class="overview-grid">
+                <article class="overview-card">
+                    <div class="card-label">Active Users (7 days)</div>
+                    <div class="card-value" id="totalUsers">
+                        <span class="loading-placeholder">-</span>
+                    </div>
+                    <div class="card-trend">
+                        <span class="card-icon">👥</span>
+                        Weekly active
+                    </div>
+                </article>
+                
+                <article class="overview-card">
+                    <div class="card-label">Words Taught Today</div>
+                    <div class="card-value" id="wordsToday">
+                        <span class="loading-placeholder">-</span>
+                    </div>
+                    <div class="card-trend">
+                        <span class="card-icon">📚</span>
+                        Today's sessions
+                    </div>
+                </article>
+                
+                <article class="overview-card">
+                    <div class="card-label">Response Rate (7d)</div>
+                    <div class="card-value" id="responseRate">
+                        <span class="loading-placeholder">-</span>
+                    </div>
+                    <div class="card-trend">
+                        <span class="card-icon">💬</span>
+                        User engagement
+                    </div>
+                </article>
+                
+                <article class="overview-card">
+                    <div class="card-label">Avg. Daily Words</div>
+                    <div class="card-value" id="avgEngagement">
+                        <span class="loading-placeholder">-</span>
+                    </div>
+                    <div class="card-trend">
+                        <span class="card-icon">📈</span>
+                        Per active user
+                    </div>
+                </article>
+            </div>
+        </section>
+        
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <h2 class="section-title">📊 Analytics Charts</h2>
+            
+            <div class="charts-grid">
+                <article class="chart-card">
+                    <h3 class="chart-title">Daily Activity (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </article>
+                
+                <article class="chart-card">
+                    <h3 class="chart-title">Difficulty Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="difficultyChart"></canvas>
+                    </div>
+                </article>
+            </div>
+            
+            <div class="charts-grid">
+                <article class="chart-card">
+                    <h3 class="chart-title">Exercise Accuracy</h3>
+                    <div class="chart-container">
+                        <canvas id="exerciseChart"></canvas>
+                    </div>
+                </article>
+                
+                <article class="chart-card">
+                    <h3 class="chart-title">Top Performers</h3>
+                    <div class="chart-container">
+                        <canvas id="performersChart"></canvas>
+                    </div>
+                </article>
+            </div>
+        </section>
+        
+        <!-- User Table Section -->
+        <section class="table-section">
+            <h2 class="section-title">👥 Active Users</h2>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Words Learned</th>
+                            <th>Streak (30d)</th>
+                            <th>Response Rate (7d)</th>
+                            <th>Last Active</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="6" class="table-loading">
+                                <span class="loading-spinner"></span>
+                                Loading data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <!-- Difficult Words Section -->
+        <section class="table-section">
+            <h2 class="section-title">🎯 Most Challenging Words</h2>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Word</th>
+                            <th>Translation</th>
+                            <th>Times Taught</th>
+                            <th>Marked "Hard"</th>
+                            <th>Difficulty %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="difficultWordsTable">
+                        <tr>
+                            <td colspan="5" class="table-loading">
+                                <span class="loading-spinner"></span>
+                                Loading data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <!-- Recent Activity Feed Section -->
+        <section class="table-section">
+            <h2 class="section-title">🕐 Recent Activity</h2>
+            <div class="table-card">
+                <div id="activityFeed" class="activity-feed">
+                    <div class="table-loading">
+                        <span class="loading-spinner"></span>
+                        Loading activity...
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- JavaScript Modules -->
+    <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+</html>
