@@ -430,7 +430,7 @@
         }
 
         async function fetchDifficultWords() {
-            const { data, error } = await supabase.rpc('get_difficult_words', { word_limit: 10 });
+            const { data, error } = await supabase.rpc('get_difficult_words', { limit_count: 10 });
             if (error) throw error;
             return data;
         }
@@ -521,7 +521,7 @@
                             <strong>${index + 1}. ${word.word}</strong>
                             <div style="color: #666; font-size: 14px;">${word.translation}</div>
                         </div>
-                        <span class="badge warning">${word.mistake_count} mistakes</span>
+                        <span class="badge warning">${word.marked_hard || 0} mistakes</span>
                     </div>
                 </div>
             `).join('');
