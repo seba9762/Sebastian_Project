@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - German Vocabulary Learning System</title>
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>🇩🇪 German Vocabulary Learning System</h1>
+            <p class="subtitle">Admin Dashboard - Real-time Analytics</p>
+            <div class="button-group">
+                <button class="btn" id="refreshBtn">🔄 Refresh Data</button>
+                <button class="btn btn-secondary" id="printBtn">🖨️ Print / Export</button>
+            </div>
+        </header>
+
+        <div id="alertArea"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Active Users</div>
+                <div class="stat-value" id="statTotalUsers">-</div>
+                <div class="stat-trend">👥 Last 30 days</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Words Taught</div>
+                <div class="stat-value" id="statWordsLearned">-</div>
+                <div class="stat-trend">📚 Total vocabulary</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Average Accuracy</div>
+                <div class="stat-value" id="statAccuracy">-</div>
+                <div class="stat-trend">✅ Overall performance</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Total Exercises</div>
+                <div class="stat-value" id="statExercises">-</div>
+                <div class="stat-trend">📝 Completed today</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">📊 Daily Activity (Last 7 Days)</h3>
+                <canvas id="dailyActivityChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">🎯 Exercise Accuracy</h3>
+                <canvas id="exerciseAccuracyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h3 class="chart-title">👥 Active Users</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User Name</th>
+                        <th>Words Learned</th>
+                        <th>Exercises Completed</th>
+                        <th>Accuracy</th>
+                        <th>Last Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="6">
+                            <div class="loading">
+                                <span class="spinner"></span>
+                                Loading users...
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-card">
+            <h3 class="chart-title">📖 Most Challenging Words</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Translation</th>
+                        <th>Times Taught</th>
+                        <th>Error Rate</th>
+                        <th>Difficulty</th>
+                    </tr>
+                </thead>
+                <tbody id="difficultWordsTableBody">
+                    <tr>
+                        <td colspan="5">
+                            <div class="loading">
+                                <span class="spinner"></span>
+                                Loading challenging words...
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">📋 Recent Activity Feed</h3>
+            <div id="activityFeed" class="activity-feed">
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Loading activity...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        import { initDashboard } from './assets/js/dashboard.js';
+        
+        window.addEventListener('load', () => {
+            initDashboard(SUPABASE_URL, SUPABASE_ANON_KEY);
+        });
+    </script>
+</body>
+</html>
