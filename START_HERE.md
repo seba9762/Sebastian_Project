@@ -53,7 +53,22 @@ WHERE table_name = 'users'
 AND column_name IN ('id', 'name', 'phone_number');
 ```
 
-### Step 4: Test It Works
+### Step 4: Fix Vocabulary VARCHAR (If Needed) 🆕
+
+**⚠️ IMPORTANT**: If you get "varchar(200) does not match text" error for vocabulary, run this:
+
+```bash
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -f sql/fix_vocabulary_varchar.sql
+```
+
+**This fixes**:
+- ✅ vocabulary.word (varchar → text cast)
+- ✅ vocabulary.translation (varchar → text cast)
+
+**Skip this step only if**:
+- Your vocabulary.word and vocabulary.translation are already `text` type
+
+### Step 5: Test It Works
 
 ```bash
 # Test basic function
@@ -61,16 +76,20 @@ psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_dashboard_stats(
 
 # Test UUID-dependent function
 psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_user_progress_summary() LIMIT 1;"
+
+# Test vocabulary function
+psql -h YOUR_HOST -U YOUR_USER -d YOUR_DB -c "SELECT * FROM get_difficult_words(10);"
 ```
 
-✅ **Expected**: Both functions return results without errors  
+✅ **Expected**: All functions return results without errors  
 ❌ **If "type uuid does not match bigint"**: You need Step 3 (UUID fix)  
-❌ **If "varchar does not match text"**: You need Step 3 (VARCHAR fix) - included in same script!  
-❌ **If "date does not match timestamptz"**: You need Step 3 (DATE fix) - included in same script!  
+❌ **If "varchar does not match text" for users**: You need Step 3 (users VARCHAR fix)  
+❌ **If "varchar(200) does not match text" for vocabulary**: You need Step 4 (vocabulary VARCHAR fix) 🆕  
+❌ **If "date does not match timestamptz"**: You need Step 3 (DATE fix)  
 ❌ **If "function is not unique" error**: See [FIXED_DEPLOYMENT_STEPS.md](FIXED_DEPLOYMENT_STEPS.md)  
 ❌ **If other errors**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
-## 🎨 Step 5: View Your Dashboard (NEW!)
+## 🎨 Step 6: View Your Dashboard
 
 After functions are deployed, use the HTML dashboards to visualize your data:
 
