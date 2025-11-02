@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Analytics - German Vocabulary Learning System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-trend {
+            color: #28a745;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .badge-primary {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .badge-easy {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-hard {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-low {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-moderate {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-critical {
+            background: #721c24;
+            color: white;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .progress-fill.success {
+            background: #28a745;
+        }
+        
+        .progress-fill.warning {
+            background: #ffc107;
+        }
+        
+        .progress-fill.danger {
+            background: #dc3545;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state-text {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state-subtext {
+            font-size: 0.95em;
+            color: #999;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .user-id {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .summary-card-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .summary-card-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .heatmap-container {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            gap: 3px;
+            margin-top: 15px;
+        }
+        
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            background: #e9ecef;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        .heatmap-cell.level-0 { background: #e9ecef; }
+        .heatmap-cell.level-1 { background: #c3e6cb; }
+        .heatmap-cell.level-2 { background: #8fd19e; }
+        .heatmap-cell.level-3 { background: #51a667; }
+        .heatmap-cell.level-4 { background: #28a745; }
+        
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .heatmap-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .heatmap-legend-box {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .button-group {
+                display: none;
+            }
+            
+            .chart-card, .table-card, .stat-card {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .user-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <div class="user-header">
+                <div class="user-info">
+                    <h1>📊 User Analytics</h1>
+                    <p class="subtitle" id="userSubtitle">Loading user information...</p>
+                </div>
+                <div class="button-group">
+                    <a href="german_vocab_dashboard (4) copy.html" class="btn btn-secondary">← Back to Dashboard</a>
+                    <button class="btn btn-success" onclick="exportData()">📥 Export</button>
+                    <button class="btn" onclick="printPage()">🖨️ Print</button>
+                    <button class="btn" onclick="loadUserData()">🔄 Refresh</button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Alert Area -->
+        <div id="alertArea"></div>
+        
+        <!-- Loading State -->
+        <div id="loadingState" class="table-card">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading user analytics...</p>
+            </div>
+        </div>
+        
+        <!-- User Stats -->
+        <div id="userStatsSection" class="hidden">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Words Learned</div>
+                    <div class="stat-value" id="totalWords">-</div>
+                    <div class="stat-trend" id="wordsTrend">-</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Current Streak</div>
+                    <div class="stat-value" id="currentStreak">-</div>
+                    <div class="stat-trend">🔥 Days in a row</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Mastery Level</div>
+                    <div class="stat-value" id="masteryLevel">-</div>
+                    <div class="stat-trend" id="masteryTrend">-</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Total Study Time</div>
+                    <div class="stat-value" id="totalTime">-</div>
+                    <div class="stat-trend">⏱️ Learning hours</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Timeline -->
+        <div id="timelineSection" class="chart-card full-width hidden">
+            <h3 class="chart-title">📈 Progress Timeline (Last 30 Days)</h3>
+            <canvas id="timelineChart"></canvas>
+        </div>
+        
+        <!-- Word Mastery & Study Hours -->
+        <div id="masterySection" class="chart-grid hidden">
+            <div class="chart-card">
+                <h3 class="chart-title">📚 Word Mastery Breakdown</h3>
+                <canvas id="masteryChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">⏰ Study Hour Heatmap</h3>
+                <div id="studyHeatmap"></div>
+            </div>
+        </div>
+        
+        <!-- Mistake Analysis -->
+        <div id="mistakeSection" class="hidden">
+            <h2 style="color: white; margin: 30px 0 20px;">🔍 Mistake Analysis</h2>
+            
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-card-value" id="totalMistakes">-</div>
+                    <div class="summary-card-label">Total Mistakes</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-value" id="mistakeRate">-</div>
+                    <div class="summary-card-label">Mistake Rate</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-value" id="improvementRate">-</div>
+                    <div class="summary-card-label">Improvement</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-value" id="criticalErrors">-</div>
+                    <div class="summary-card-label">Critical Errors</div>
+                </div>
+            </div>
+            
+            <!-- Mistake Charts -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3 class="chart-title">Mistakes by Type</h3>
+                    <canvas id="mistakeTypeChart"></canvas>
+                </div>
+                
+                <div class="chart-card">
+                    <h3 class="chart-title">Mistakes by Category</h3>
+                    <canvas id="mistakeCategoryChart"></canvas>
+                </div>
+                
+                <div class="chart-card">
+                    <h3 class="chart-title">Mistakes by Severity</h3>
+                    <canvas id="mistakeSeverityChart"></canvas>
+                </div>
+                
+                <div class="chart-card">
+                    <h3 class="chart-title">Mistake Trends (Last 7 Days)</h3>
+                    <canvas id="mistakeTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Challenging Words -->
+        <div id="challengingWordsSection" class="table-card hidden">
+            <h3 class="chart-title">⚠️ Most Challenging Words</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Translation</th>
+                        <th>Difficulty</th>
+                        <th>Attempts</th>
+                        <th>Success Rate</th>
+                        <th>Last Attempted</th>
+                    </tr>
+                </thead>
+                <tbody id="challengingWordsBody">
+                    <tr>
+                        <td colspan="6" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div id="recentActivitySection" class="table-card hidden">
+            <h3 class="chart-title">🕒 Recent Activity</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Activity Type</th>
+                        <th>Word</th>
+                        <th>Result</th>
+                        <th>Time Spent</th>
+                    </tr>
+                </thead>
+                <tbody id="recentActivityBody">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Chapter Progress -->
+        <div id="chapterProgressSection" class="table-card hidden">
+            <h3 class="chart-title">📖 Chapter Progress</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Chapter</th>
+                        <th>Words Completed</th>
+                        <th>Progress</th>
+                        <th>Mastery</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="chapterProgressBody">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="assets/js/user-detail.js"></script>
+</body>
+</html>
