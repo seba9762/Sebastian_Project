@@ -251,6 +251,23 @@
             color: #666;
         }
         
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .debug-output {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -267,6 +284,37 @@
         .hidden {
             display: none;
         }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 10px;
+            }
+            
+            .button-group {
+                display: none;
+            }
+            
+            #debugCard {
+                display: none !important;
+            }
+            
+            #alertArea {
+                display: none;
+            }
+            
+            .chart-card, .table-card, .stat-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            
+            header {
+                box-shadow: none;
+                border-bottom: 2px solid #667eea;
+            }
+        }
     </style>
 </head>
 <body>
@@ -275,9 +323,10 @@
             <h1>🇩🇪 German Vocabulary Learning System</h1>
             <p class="subtitle">Admin Dashboard - Real-time Analytics</p>
             <div class="button-group">
-                <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
-                <button class="debug-btn" onclick="toggleDebug()">🔍 Toggle Debug</button>
-                <button class="debug-btn" onclick="testConnection()">🔌 Test Connection</button>
+                <button class="refresh-btn" id="refreshBtn">🔄 Refresh Data</button>
+                <button class="debug-btn" id="debugBtn">🔍 Toggle Debug</button>
+                <button class="debug-btn" id="testBtn">🔌 Test Connection</button>
+                <button class="debug-btn" id="printBtn">🖨️ Print / Export</button>
             </div>
         </header>
         
@@ -381,7 +430,7 @@
                 </thead>
                 <tbody id="usersTableBody">
                     <tr>
-                        <td colspan="6" class="loading">Loading data...</td>
+                        <td colspan="6" class="loading"><span class="spinner"></span>Loading data...</td>
                     </tr>
                 </tbody>
             </table>
@@ -402,432 +451,24 @@
                 </thead>
                 <tbody id="difficultWordsTable">
                     <tr>
-                        <td colspan="5" class="loading">Loading data...</td>
+                        <td colspan="5" class="loading"><span class="spinner"></span>Loading data...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
     
-    <script>
+    <script type="module">
         // ⚠️ CONFIGURE YOUR SUPABASE CREDENTIALS HERE ⚠️
         const SUPABASE_URL = 'YOUR_SUPABASE_URL';
         const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
         
-        // Chart instances
-        let activityChart, difficultyChart, exerciseChart, performersChart;
-        let debugVisible = false;
+        // Import dashboard initialization
+        import { initDashboard } from './assets/js/dashboard.js';
         
-        function toggleDebug() {
-            debugVisible = !debugVisible;
-            document.getElementById('debugCard').classList.toggle('hidden');
-        }
-        
-        function logDebug(message, data = null) {
-            const debugOutput = document.getElementById('debugOutput');
-            const timestamp = new Date().toLocaleTimeString();
-            let logEntry = `[${timestamp}] ${message}`;
-            
-            if (data !== null) {
-                logEntry += '\n' + JSON.stringify(data, null, 2);
-            }
-            
-            debugOutput.textContent += logEntry + '\n\n';
-            debugOutput.scrollTop = debugOutput.scrollHeight;
-            console.log(message, data);
-        }
-        
-        function showAlert(message, type = 'info') {
-            const alertArea = document.getElementById('alertArea');
-            const icons = {
-                warning: '⚠️',
-                error: '❌',
-                success: '✅',
-                info: 'ℹ️'
-            };
-            
-            alertArea.innerHTML = `
-                <div class="alert alert-${type}">
-                    <span class="alert-icon">${icons[type] || 'ℹ️'}</span>
-                    ${message}
-                </div>
-            `;
-        }
-        
-        async function testConnection() {
-            logDebug('Testing Supabase connection...');
-            
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_KEY') {
-                showAlert('⚠️ Please configure your Supabase credentials in the HTML file!', 'error');
-                logDebug('ERROR: Credentials not configured');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/users?select=count`, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'count=exact'
-                    }
-                });
-                
-                if (response.ok) {
-                    const count = response.headers.get('content-range');
-                    showAlert(`✅ Connection successful! ${count ? 'Found ' + count.split('/')[1] + ' users.' : ''}`, 'success');
-                    logDebug('Connection test passed', { status: response.status });
-                } else {
-                    throw new Error(`${response.status}: ${response.statusText}`);
-                }
-            } catch (error) {
-                showAlert(`❌ Connection failed: ${error.message}`, 'error');
-                logDebug('Connection test failed', error);
-            }
-        }
-        
-        async function callFunction(functionName) {
-            logDebug(`Calling function: ${functionName}`);
-            
-            try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                logDebug(`✓ ${functionName} returned:`, data);
-                return data;
-            } catch (error) {
-                logDebug(`✗ ${functionName} failed: ${error.message}`);
-                return null;
-            }
-        }
-        
-        // Initialize charts
-        function initCharts() {
-            const activityCtx = document.getElementById('activityChart').getContext('2d');
-            activityChart = new Chart(activityCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Messages Sent',
-                        data: [],
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }, {
-                        label: 'User Responses',
-                        data: [],
-                        borderColor: '#764ba2',
-                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-            
-            const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
-            difficultyChart = new Chart(difficultyCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-            
-            const exerciseCtx = document.getElementById('exerciseChart').getContext('2d');
-            exerciseChart = new Chart(exerciseCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Completion Rate %',
-                        data: [],
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
-            });
-            
-            const performersCtx = document.getElementById('performersChart').getContext('2d');
-            performersChart = new Chart(performersCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Words Learned',
-                        data: [],
-                        backgroundColor: '#667eea'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    indexAxis: 'y',
-                    plugins: { legend: { display: false } },
-                    scales: { x: { beginAtZero: true } }
-                }
-            });
-        }
-        
-        async function loadData() {
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_KEY') {
-                showAlert('⚠️ Please configure your Supabase credentials at the top of the HTML file!', 'error');
-                return;
-            }
-            
-            try {
-                logDebug('=== Starting data load ===');
-                
-                const stats = await callFunction('get_dashboard_stats');
-                const userProgress = await callFunction('get_user_progress_summary');
-                const dailyActivity = await callFunction('get_daily_activity');
-                const difficulty = await callFunction('get_difficulty_distribution');
-                const exerciseAccuracy = await callFunction('get_exercise_accuracy');
-                const difficultWords = await callFunction('get_difficult_words');
-                const systemSummary = await callFunction('get_all_sessions_summary');
-                
-                if (stats) updateStats(stats);
-                if (systemSummary) updateSystemOverview(systemSummary);
-                if (userProgress) {
-                    updateUsersTable(userProgress);
-                    updatePerformersChart(userProgress);
-                }
-                if (dailyActivity) updateActivityChart(dailyActivity);
-                if (difficulty) updateDifficultyChart(difficulty);
-                if (exerciseAccuracy) updateExerciseChart(exerciseAccuracy);
-                if (difficultWords) updateDifficultWordsTable(difficultWords);
-                
-                showAlert('✅ Dashboard updated successfully!', 'success');
-                logDebug('=== Data load complete ===');
-                
-            } catch (error) {
-                console.error('Error loading data:', error);
-                showAlert(`❌ Error: ${error.message}`, 'error');
-                logDebug('FATAL ERROR', error);
-            }
-        }
-        
-        function updateStats(stats) {
-            logDebug('updateStats called with:', stats);
-            const data = Array.isArray(stats) ? stats[0] : stats;
-            logDebug('Parsed stats data:', data);
-            
-            document.getElementById('totalUsers').textContent = data.total_users || 0;
-            document.getElementById('wordsToday').textContent = data.words_today || 0;
-            document.getElementById('responseRate').textContent = `${data.response_rate || 0}%`;
-            document.getElementById('avgEngagement').textContent = data.avg_engagement || 0;
-        }
-        
-        function updateSystemOverview(summary) {
-            logDebug('updateSystemOverview called with:', summary);
-            const data = Array.isArray(summary) ? summary[0] : summary;
-            logDebug('Parsed system data:', data);
-            
-            if (!data) return;
-            
-            const totalSessions = data.total_sessions || 0;
-            const sessionTypes = data.session_types || {};
-            const messagesSent = (sessionTypes.learn || 0) + (sessionTypes.exercise || 0) + (sessionTypes.review || 0);
-            const activeDays = data.dates_with_data || 0;
-            
-            if (data.earliest_date) {
-                const earliest = new Date(data.earliest_date);
-                const daysSince = Math.floor((new Date() - earliest) / (1000 * 60 * 60 * 24));
-                document.getElementById('overviewAge').textContent = daysSince === 0 ? 'Today' : `${daysSince}d`;
-            } else {
-                document.getElementById('overviewAge').textContent = 'New';
-            }
-            
-            document.getElementById('overviewSessions').textContent = totalSessions;
-            document.getElementById('overviewMessages').textContent = messagesSent;
-            document.getElementById('overviewResponses').textContent = activeDays;
-        }
-        
-        function updateActivityChart(data) {
-            if (!data || data.length === 0) {
-                activityChart.data.labels = ['No data'];
-                activityChart.data.datasets[0].data = [0];
-                activityChart.data.datasets[1].data = [0];
-                activityChart.update();
-                return;
-            }
-            
-            const labels = data.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }));
-            const messagesSent = data.map(d => parseInt(d.messages_sent) || 0);
-            const responsesReceived = data.map(d => parseInt(d.responses_received) || 0);
-            
-            activityChart.data.labels = labels;
-            activityChart.data.datasets[0].data = messagesSent;
-            activityChart.data.datasets[1].data = responsesReceived;
-            activityChart.update();
-        }
-        
-        function updateDifficultyChart(data) {
-            if (!data || data.length === 0) {
-                difficultyChart.data.labels = ['No data'];
-                difficultyChart.data.datasets[0].data = [1];
-                difficultyChart.update();
-                return;
-            }
-            
-            const labels = data.map(d => (d.difficulty || '').charAt(0).toUpperCase() + (d.difficulty || '').slice(1));
-            const counts = data.map(d => parseInt(d.count) || 0);
-            
-            difficultyChart.data.labels = labels;
-            difficultyChart.data.datasets[0].data = counts;
-            difficultyChart.update();
-        }
-        
-        function updateExerciseChart(data) {
-            if (!data || data.length === 0) {
-                exerciseChart.data.labels = ['No data'];
-                exerciseChart.data.datasets[0].data = [0];
-                exerciseChart.update();
-                return;
-            }
-            
-            const labels = data.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }));
-            const rates = data.map(d => parseFloat(d.completion_rate) || 0);
-            
-            exerciseChart.data.labels = labels;
-            exerciseChart.data.datasets[0].data = rates;
-            exerciseChart.update();
-        }
-        
-        function updatePerformersChart(users) {
-            if (!users || users.length === 0) {
-                performersChart.data.labels = ['No data'];
-                performersChart.data.datasets[0].data = [0];
-                performersChart.update();
-                return;
-            }
-            
-            const topUsers = users
-                .sort((a, b) => (b.words_learned || 0) - (a.words_learned || 0))
-                .slice(0, 5);
-            
-            const names = topUsers.map(u => u.name || 'Unknown');
-            const wordsCount = topUsers.map(u => parseInt(u.words_learned) || 0);
-            
-            performersChart.data.labels = names;
-            performersChart.data.datasets[0].data = wordsCount;
-            performersChart.update();
-        }
-        
-        function updateUsersTable(users) {
-            const tbody = document.getElementById('usersTableBody');
-            
-            if (!users || users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading">No users found</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = users.map(user => `
-                <tr>
-                    <td><strong>${user.name || 'N/A'}</strong><br><small>${user.phone_number || 'N/A'}</small></td>
-                    <td>${user.words_learned || 0}</td>
-                    <td>🔥 ${user.current_streak || 0} days</td>
-                    <td>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${user.response_rate || 0}%"></div>
-                        </div>
-                        <small>${user.response_rate || 0}%</small>
-                    </td>
-                    <td>${formatDate(user.last_active)}</td>
-                    <td>
-                        <span class="badge ${getStatusBadge(user.last_active)}">
-                            ${getStatusText(user.last_active)}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
-        }
-        
-        function updateDifficultWordsTable(words) {
-            const tbody = document.getElementById('difficultWordsTable');
-            
-            if (!words || words.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">No difficult words data yet</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = words.map(word => `
-                <tr>
-                    <td><strong>${word.word || 'N/A'}</strong></td>
-                    <td>${word.translation || 'N/A'}</td>
-                    <td>${word.times_taught || 0}</td>
-                    <td>${word.marked_hard || 0}</td>
-                    <td>
-                        <span class="badge ${parseFloat(word.difficulty_pct) > 50 ? 'badge-danger' : parseFloat(word.difficulty_pct) > 30 ? 'badge-warning' : 'badge-success'}">
-                            ${word.difficulty_pct || 0}%
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
-        }
-        
-        function formatDate(dateString) {
-            if (!dateString) return 'Never';
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMins = Math.floor((now - date) / (1000 * 60));
-            
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-            return `${Math.floor(diffMins / 1440)}d ago`;
-        }
-        
-        function getStatusBadge(lastActive) {
-            if (!lastActive) return 'badge-danger';
-            const diffDays = Math.floor((new Date() - new Date(lastActive)) / (1000 * 60 * 60 * 24));
-            if (diffDays < 1) return 'badge-success';
-            if (diffDays < 3) return 'badge-warning';
-            return 'badge-danger';
-        }
-        
-        function getStatusText(lastActive) {
-            if (!lastActive) return 'Never Active';
-            const diffDays = Math.floor((new Date() - new Date(lastActive)) / (1000 * 60 * 60 * 24));
-            if (diffDays < 1) return 'Active Today';
-            if (diffDays < 3) return 'Recent';
-            return 'Inactive';
-        }
-        
-        // Initialize on page load
+        // Initialize dashboard on page load
         window.addEventListener('load', () => {
-            initCharts();
-            loadData();
-            setInterval(loadData, 300000); // Auto-refresh every 5 minutes
+            initDashboard(SUPABASE_URL, SUPABASE_KEY);
         });
     </script>
 </body>
