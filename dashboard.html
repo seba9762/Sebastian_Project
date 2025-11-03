@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Vocabulary - Admin Dashboard</title>
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>🇩🇪 German Vocabulary Learning System</h1>
+            <p class="subtitle">Admin Dashboard - Real-time Analytics</p>
+            <div class="button-group">
+                <button class="btn" id="refreshBtn">🔄 Refresh Data</button>
+                <button class="btn btn-secondary" id="testBtn">🔌 Test Connection</button>
+                <button class="btn btn-success" id="printBtn">🖨️ Print / Export</button>
+            </div>
+        </header>
+        
+        <!-- Alert Area -->
+        <div id="alertArea"></div>
+        
+        <!-- Overview Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-value" id="totalUsers">-</div>
+                <div class="stat-trend">👥 Registered users</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Active Users</div>
+                <div class="stat-value" id="activeUsers">-</div>
+                <div class="stat-trend">📊 Last 7 days</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Words Today</div>
+                <div class="stat-value" id="wordsToday">-</div>
+                <div class="stat-trend">📚 Today's lessons</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Response Rate</div>
+                <div class="stat-value" id="responseRate">-</div>
+                <div class="stat-trend">💬 7-day average</div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">📈 Daily Activity (Last 7 Days)</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3 class="chart-title">📊 Exercise Accuracy (Last 7 Days)</h3>
+                <canvas id="accuracyChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Top Performers Chart -->
+        <div class="chart-card full-width">
+            <h3 class="chart-title">🏆 Top Performers</h3>
+            <canvas id="performersChart"></canvas>
+        </div>
+        
+        <!-- Difficult Words Table -->
+        <div class="table-card">
+            <h3 class="chart-title">😰 Most Difficult Words</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>German Word</th>
+                        <th>English Translation</th>
+                        <th>Category</th>
+                        <th>Times Taught</th>
+                        <th>Error Rate</th>
+                        <th>Difficulty</th>
+                    </tr>
+                </thead>
+                <tbody id="difficultWordsTable">
+                    <tr>
+                        <td colspan="6" class="loading">
+                            <div class="spinner"></div>
+                            Loading data...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Recent Activity Feed -->
+        <div class="table-card">
+            <h3 class="chart-title">🕐 Recent Activity</h3>
+            <div id="recentActivityFeed" class="activity-feed">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading activity...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // ⚠️ CONFIGURE YOUR SUPABASE CREDENTIALS HERE ⚠️
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_KEY';
+        
+        // Import and initialize dashboard
+        import { initDashboard } from './assets/js/dashboard.js';
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initDashboard(SUPABASE_URL, SUPABASE_ANON_KEY);
+        });
+    </script>
+</body>
+</html>

@@ -1,816 +1,379 @@
 /**
- * Dashboard Module - Data loading, rendering, and visualization
+ * Dashboard JavaScript - Main admin dashboard logic
+ * Loads data from Supabase and renders charts
  */
 
-import { 
-    callRPC, 
-    log, 
-    showAlert, 
-    normalizeResponse, 
-    validateArray, 
-    parseNumber, 
-    parseInt as parseIntSafe,
+import {
+    initAPI,
+    callSupabaseFunction,
+    formatNumber,
     formatRelativeDate,
-    formatChartDate,
-    printDashboard,
-    testConnection,
-    initAPI
+    showError,
+    showSuccess,
+    createChart,
+    getDifficultyBadge,
+    createEmptyState
 } from './api.js';
 
-// Chart instances
-let charts = {
-    activity: null,
-    difficulty: null,
-    exercise: null,
-    performers: null
-};
-
-// Debug state
-let debugVisible = false;
+let charts = {};
 
 /**
  * Initialize dashboard
  */
-export function initDashboard(supabaseUrl, supabaseKey) {
-    log('Initializing dashboard...');
+export async function initDashboard(supabaseUrl, supabaseKey) {
+    console.log('🚀 Initializing dashboard...');
     
-    // Initialize API module
     initAPI(supabaseUrl, supabaseKey);
     
-    // Initialize charts
-    initCharts();
+    setupEventListeners();
     
-    // Setup event handlers
-    setupEventHandlers();
-    
-    // Load initial data
-    loadDashboardData();
-    
-    // Setup auto-refresh (every 5 minutes)
-    setInterval(loadDashboardData, 300000);
-    
-    log('Dashboard initialized', null, 'success');
+    await loadAllData();
 }
 
 /**
- * Setup event handlers
+ * Setup event listeners
  */
-function setupEventHandlers() {
-    // Refresh button
+function setupEventListeners() {
     const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadDashboardData);
-    }
-    
-    // Debug toggle button
-    const debugBtn = document.getElementById('debugBtn');
-    if (debugBtn) {
-        debugBtn.addEventListener('click', toggleDebug);
-    }
-    
-    // Test connection button
     const testBtn = document.getElementById('testBtn');
-    if (testBtn) {
-        testBtn.addEventListener('click', testConnection);
-    }
-    
-    // Print/Export button
     const printBtn = document.getElementById('printBtn');
+    
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '🔄 Loading...';
+            await loadAllData();
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh Data';
+        });
+    }
+    
+    if (testBtn) {
+        testBtn.addEventListener('click', async () => {
+            try {
+                await callSupabaseFunction('get_dashboard_stats');
+                showSuccess('Connection successful!');
+            } catch (error) {
+                showError(`Connection failed: ${error.message}`);
+            }
+        });
+    }
+    
     if (printBtn) {
-        printBtn.addEventListener('click', printDashboard);
+        printBtn.addEventListener('click', () => {
+            window.print();
+        });
     }
 }
 
 /**
- * Toggle debug panel
+ * Load all dashboard data
  */
-function toggleDebug() {
-    debugVisible = !debugVisible;
-    const debugCard = document.getElementById('debugCard');
-    if (debugCard) {
-        debugCard.classList.toggle('hidden');
-    }
-}
-
-/**
- * Initialize all Chart.js visualizations
- */
-function initCharts() {
-    log('Initializing charts...');
-    
-    // Activity Chart
-    const activityCtx = document.getElementById('activityChart')?.getContext('2d');
-    if (activityCtx) {
-        charts.activity = new Chart(activityCtx, {
-            type: 'line',
-            data: {
-                labels: ['No data'],
-                datasets: [{
-                    label: 'Messages Sent',
-                    data: [0],
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }, {
-                    label: 'User Responses',
-                    data: [0],
-                    borderColor: '#764ba2',
-                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                    legend: { 
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        enabled: true,
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8
-                    }
-                },
-                scales: { 
-                    y: { 
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    } 
-                }
-            }
-        });
-    }
-    
-    // Difficulty Distribution Chart
-    const difficultyCtx = document.getElementById('difficultyChart')?.getContext('2d');
-    if (difficultyCtx) {
-        charts.difficulty = new Chart(difficultyCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['No data'],
-                datasets: [{
-                    data: [1],
-                    backgroundColor: ['#e0e0e0']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                    legend: { 
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8
-                    }
-                }
-            }
-        });
-    }
-    
-    // Exercise Accuracy Chart
-    const exerciseCtx = document.getElementById('exerciseChart')?.getContext('2d');
-    if (exerciseCtx) {
-        charts.exercise = new Chart(exerciseCtx, {
-            type: 'line',
-            data: {
-                labels: ['No data'],
-                datasets: [{
-                    label: 'Completion Rate %',
-                    data: [0],
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                    legend: { 
-                        display: false 
-                    },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                return `Completion Rate: ${context.parsed.y.toFixed(1)}%`;
-                            }
-                        }
-                    }
-                },
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        }
-                    } 
-                }
-            }
-        });
-    }
-    
-    // Top Performers Chart
-    const performersCtx = document.getElementById('performersChart')?.getContext('2d');
-    if (performersCtx) {
-        charts.performers = new Chart(performersCtx, {
-            type: 'bar',
-            data: {
-                labels: ['No data'],
-                datasets: [{
-                    label: 'Words Learned',
-                    data: [0],
-                    backgroundColor: '#667eea'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                indexAxis: 'y',
-                plugins: { 
-                    legend: { 
-                        display: false 
-                    },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        cornerRadius: 8
-                    }
-                },
-                scales: { 
-                    x: { 
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    } 
-                }
-            }
-        });
-    }
-    
-    log('Charts initialized', null, 'success');
-}
-
-/**
- * Main data loading function with async/await
- */
-export async function loadDashboardData() {
-    log('=== Starting dashboard data load ===');
-    showAlert('🔄 Loading dashboard data...', 'info');
-    
+async function loadAllData() {
     try {
-        // Load all datasets in parallel
-        const [
-            statsResult,
-            dailyActivityResult,
-            exerciseAccuracyResult,
-            topPerformersResult,
-            difficultWordsResult,
-            recentActivityResult,
-            userProgressResult,
-            systemSummaryResult,
-            difficultyDistResult
-        ] = await Promise.all([
-            callRPC('get_dashboard_stats'),
-            callRPC('get_daily_activity', { days: 7 }),
-            callRPC('get_exercise_accuracy', { days: 7 }),
-            callRPC('get_top_performers'),
-            callRPC('get_difficult_words', { limit: 10 }),
-            callRPC('get_recent_activity', { limit: 20 }),
-            callRPC('get_user_progress_summary'),
-            callRPC('get_all_sessions_summary'),
-            callRPC('get_difficulty_distribution')
+        await Promise.all([
+            loadOverviewStats(),
+            loadDailyActivity(),
+            loadExerciseAccuracy(),
+            loadTopPerformers(),
+            loadDifficultWords(),
+            loadRecentActivity()
         ]);
         
-        // Update UI with results
-        if (statsResult.success) {
-            updateStats(statsResult.data);
-        }
-        
-        if (systemSummaryResult.success) {
-            updateSystemOverview(systemSummaryResult.data);
-        }
-        
-        if (dailyActivityResult.success) {
-            updateActivityChart(dailyActivityResult.data);
-        }
-        
-        if (exerciseAccuracyResult.success) {
-            updateExerciseChart(exerciseAccuracyResult.data);
-        }
-        
-        if (difficultyDistResult.success) {
-            updateDifficultyChartFromDistribution(difficultyDistResult.data);
-        }
-        
-        if (topPerformersResult.success) {
-            updatePerformersChart(topPerformersResult.data);
-        }
-        
-        if (userProgressResult.success) {
-            updateUsersTable(userProgressResult.data);
-        }
-        
-        if (difficultWordsResult.success) {
-            updateDifficultWordsTable(difficultWordsResult.data);
-        }
-        
-        if (recentActivityResult.success) {
-            updateRecentActivityFeed(recentActivityResult.data);
-        }
-        
-        showAlert('✅ Dashboard updated successfully!', 'success');
-        log('=== Dashboard data load complete ===', null, 'success');
-        
+        showSuccess('Dashboard loaded successfully!');
     } catch (error) {
-        const errorMsg = `Failed to load dashboard data: ${error.message}`;
-        log(errorMsg, error, 'error');
-        showAlert(`❌ ${errorMsg}`, 'error');
+        console.error('Error loading dashboard:', error);
+        showError(`Failed to load dashboard: ${error.message}`);
     }
 }
 
 /**
- * Update stats cards
+ * Load overview statistics
  */
-function updateStats(data) {
-    log('Updating stats...', data);
-    
-    // Normalize response (handle single object or array)
-    const stats = normalizeResponse(data);
-    
-    if (!stats) {
-        log('No stats data available', null, 'warning');
-        return;
-    }
-    
-    // Safely update each stat with coercion
-    const totalUsers = parseIntSafe(stats.total_users, 0);
-    const wordsToday = parseIntSafe(stats.words_today, 0);
-    const responseRate = parseNumber(stats.response_rate, 0);
-    const avgEngagement = parseNumber(stats.avg_engagement, 0);
-    
-    // Update DOM
-    updateElement('totalUsers', totalUsers);
-    updateElement('wordsToday', wordsToday);
-    updateElement('responseRate', `${responseRate.toFixed(1)}%`);
-    updateElement('avgEngagement', avgEngagement.toFixed(1));
-    
-    log('Stats updated', { totalUsers, wordsToday, responseRate, avgEngagement }, 'success');
-}
-
-/**
- * Update system overview section
- */
-function updateSystemOverview(data) {
-    log('Updating system overview...', data);
-    
-    // Normalize response (handle single object or array)
-    const summary = normalizeResponse(data);
-    
-    if (!summary) {
-        log('No system overview data available', null, 'warning');
-        return;
-    }
-    
-    const totalSessions = parseIntSafe(summary.total_sessions, 0);
-    const sessionTypes = summary.session_types || {};
-    const messagesSent = parseIntSafe(sessionTypes.learn, 0) + 
-                        parseIntSafe(sessionTypes.exercise, 0) + 
-                        parseIntSafe(sessionTypes.review, 0);
-    const activeDays = parseIntSafe(summary.dates_with_data, 0);
-    
-    // Calculate system age
-    if (summary.earliest_date) {
-        try {
-            const earliest = new Date(summary.earliest_date);
-            if (!isNaN(earliest.getTime())) {
-                const daysSince = Math.floor((new Date() - earliest) / (1000 * 60 * 60 * 24));
-                updateElement('overviewAge', daysSince === 0 ? 'Today' : `${daysSince}d`);
-            } else {
-                updateElement('overviewAge', 'New');
-            }
-        } catch {
-            updateElement('overviewAge', 'New');
+async function loadOverviewStats() {
+    try {
+        const data = await callSupabaseFunction('get_dashboard_stats');
+        
+        if (!data || data.length === 0) {
+            console.warn('No dashboard stats available');
+            return;
         }
-    } else {
-        updateElement('overviewAge', 'New');
+        
+        const stats = data[0] || data;
+        
+        document.getElementById('totalUsers').textContent = formatNumber(stats.total_users || 0);
+        document.getElementById('activeUsers').textContent = formatNumber(stats.active_users || 0);
+        document.getElementById('wordsToday').textContent = formatNumber(stats.words_today || 0);
+        document.getElementById('responseRate').textContent = 
+            `${(stats.response_rate || 0).toFixed(1)}%`;
+    } catch (error) {
+        console.error('Error loading overview stats:', error);
+        document.getElementById('totalUsers').textContent = '0';
+        document.getElementById('activeUsers').textContent = '0';
+        document.getElementById('wordsToday').textContent = '0';
+        document.getElementById('responseRate').textContent = '0%';
     }
-    
-    updateElement('overviewSessions', totalSessions);
-    updateElement('overviewMessages', messagesSent);
-    updateElement('overviewResponses', activeDays);
-    
-    log('System overview updated', { totalSessions, messagesSent, activeDays }, 'success');
 }
 
 /**
- * Update activity chart
+ * Load daily activity chart
  */
-function updateActivityChart(data) {
-    log('Updating activity chart...', data);
-    
-    if (!charts.activity) {
-        log('Activity chart not initialized', null, 'warning');
-        return;
-    }
-    
-    const activities = validateArray(data, 'activity chart');
-    
-    if (activities.length === 0) {
-        charts.activity.data.labels = ['No data'];
-        charts.activity.data.datasets[0].data = [0];
-        charts.activity.data.datasets[1].data = [0];
-        charts.activity.update();
-        log('Activity chart: no data available', null, 'warning');
-        return;
-    }
-    
-    // Parse and validate data
-    const labels = activities.map(d => formatChartDate(d.date, 'short'));
-    const messagesSent = activities.map(d => parseIntSafe(d.messages_sent, 0));
-    const responsesReceived = activities.map(d => parseIntSafe(d.responses_received, 0));
-    
-    charts.activity.data.labels = labels;
-    charts.activity.data.datasets[0].data = messagesSent;
-    charts.activity.data.datasets[1].data = responsesReceived;
-    charts.activity.update();
-    
-    log('Activity chart updated', { dataPoints: activities.length }, 'success');
-}
-
-/**
- * Update exercise accuracy chart
- */
-function updateExerciseChart(data) {
-    log('Updating exercise chart...', data);
-    
-    if (!charts.exercise) {
-        log('Exercise chart not initialized', null, 'warning');
-        return;
-    }
-    
-    const exercises = validateArray(data, 'exercise chart');
-    
-    if (exercises.length === 0) {
-        charts.exercise.data.labels = ['No data'];
-        charts.exercise.data.datasets[0].data = [0];
-        charts.exercise.update();
-        log('Exercise chart: no data available', null, 'warning');
-        return;
-    }
-    
-    // Parse and validate data
-    const labels = exercises.map(d => formatChartDate(d.date, 'short'));
-    const rates = exercises.map(d => parseNumber(d.completion_rate, 0));
-    
-    charts.exercise.data.labels = labels;
-    charts.exercise.data.datasets[0].data = rates;
-    charts.exercise.update();
-    
-    log('Exercise chart updated', { dataPoints: exercises.length }, 'success');
-}
-
-/**
- * Update top performers chart
- */
-function updatePerformersChart(data) {
-    log('Updating performers chart...', data);
-    
-    if (!charts.performers) {
-        log('Performers chart not initialized', null, 'warning');
-        return;
-    }
-    
-    const users = validateArray(data, 'performers chart');
-    
-    if (users.length === 0) {
-        charts.performers.data.labels = ['No data'];
-        charts.performers.data.datasets[0].data = [0];
-        charts.performers.update();
-        log('Performers chart: no data available', null, 'warning');
-        return;
-    }
-    
-    // Get top 5 performers
-    const topUsers = users
-        .sort((a, b) => parseIntSafe(b.words_learned, 0) - parseIntSafe(a.words_learned, 0))
-        .slice(0, 5);
-    
-    const names = topUsers.map(u => u.name || 'Unknown');
-    const wordsCount = topUsers.map(u => parseIntSafe(u.words_learned, 0));
-    
-    // Update difficulty chart if we have difficulty data
-    if (users.length > 0 && users[0].difficulty_distribution) {
-        updateDifficultyChart(users);
-    }
-    
-    charts.performers.data.labels = names;
-    charts.performers.data.datasets[0].data = wordsCount;
-    charts.performers.update();
-    
-    log('Performers chart updated', { topUsers: topUsers.length }, 'success');
-}
-
-/**
- * Update difficulty distribution chart from user data
- */
-function updateDifficultyChart(userData) {
-    log('Updating difficulty chart from user data...');
-    
-    if (!charts.difficulty) {
-        log('Difficulty chart not initialized', null, 'warning');
-        return;
-    }
-    
-    // Try to extract difficulty distribution from user data or use dummy data
-    const difficultyData = [
-        { difficulty: 'Easy', count: 0 },
-        { difficulty: 'Medium', count: 0 },
-        { difficulty: 'Hard', count: 0 }
-    ];
-    
-    // If we have actual difficulty data, use it
-    if (Array.isArray(userData) && userData.length > 0) {
-        // Aggregate difficulty counts
-        userData.forEach(user => {
-            if (user.easy_count) difficultyData[0].count += parseIntSafe(user.easy_count, 0);
-            if (user.medium_count) difficultyData[1].count += parseIntSafe(user.medium_count, 0);
-            if (user.hard_count) difficultyData[2].count += parseIntSafe(user.hard_count, 0);
+async function loadDailyActivity() {
+    try {
+        const data = await callSupabaseFunction('get_daily_activity', { days: 7 });
+        
+        if (!data || data.length === 0) {
+            console.warn('No daily activity data');
+            return;
+        }
+        
+        const labels = data.map(d => {
+            const date = new Date(d.activity_date || d.date);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         });
-    }
-    
-    const totalCount = difficultyData.reduce((sum, d) => sum + d.count, 0);
-    
-    if (totalCount === 0) {
-        charts.difficulty.data.labels = ['No data'];
-        charts.difficulty.data.datasets[0].data = [1];
-        charts.difficulty.data.datasets[0].backgroundColor = ['#e0e0e0'];
-        charts.difficulty.update();
-        log('Difficulty chart: no data available', null, 'warning');
-        return;
-    }
-    
-    const labels = difficultyData.map(d => d.difficulty);
-    const counts = difficultyData.map(d => d.count);
-    
-    charts.difficulty.data.labels = labels;
-    charts.difficulty.data.datasets[0].data = counts;
-    charts.difficulty.data.datasets[0].backgroundColor = ['#28a745', '#ffc107', '#dc3545'];
-    charts.difficulty.update();
-    
-    log('Difficulty chart updated', { totalCount }, 'success');
-}
-
-/**
- * Update difficulty distribution chart from API data
- */
-function updateDifficultyChartFromDistribution(data) {
-    log('Updating difficulty chart from distribution...', data);
-    
-    if (!charts.difficulty) {
-        log('Difficulty chart not initialized', null, 'warning');
-        return;
-    }
-    
-    const difficulties = validateArray(data, 'difficulty chart');
-    
-    if (difficulties.length === 0) {
-        charts.difficulty.data.labels = ['No data'];
-        charts.difficulty.data.datasets[0].data = [1];
-        charts.difficulty.data.datasets[0].backgroundColor = ['#e0e0e0'];
-        charts.difficulty.update();
-        log('Difficulty chart: no data available', null, 'warning');
-        return;
-    }
-    
-    const labels = difficulties.map(d => {
-        const diff = d.difficulty || '';
-        return diff.charAt(0).toUpperCase() + diff.slice(1);
-    });
-    const counts = difficulties.map(d => parseIntSafe(d.count, 0));
-    
-    charts.difficulty.data.labels = labels;
-    charts.difficulty.data.datasets[0].data = counts;
-    charts.difficulty.data.datasets[0].backgroundColor = ['#28a745', '#ffc107', '#dc3545'];
-    charts.difficulty.update();
-    
-    log('Difficulty chart updated', { dataPoints: difficulties.length }, 'success');
-}
-
-/**
- * Update users table
- */
-function updateUsersTable(data) {
-    log('Updating users table...', data);
-    
-    const tbody = document.getElementById('usersTableBody');
-    if (!tbody) {
-        log('Users table body not found', null, 'warning');
-        return;
-    }
-    
-    const users = validateArray(data, 'users table');
-    
-    if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">No users found</td></tr>';
-        log('Users table: no data available', null, 'warning');
-        return;
-    }
-    
-    tbody.innerHTML = users.map(user => {
-        const name = user.name || 'N/A';
-        const phoneNumber = user.phone_number || 'N/A';
-        const wordsLearned = parseIntSafe(user.words_learned, 0);
-        const currentStreak = parseIntSafe(user.current_streak, 0);
-        const responseRate = parseNumber(user.response_rate, 0);
-        const lastActive = user.last_active;
         
-        return `
+        const sessions = data.map(d => d.session_count || d.sessions || 0);
+        const words = data.map(d => d.words_taught || d.words || 0);
+        
+        if (charts.activityChart) {
+            charts.activityChart.destroy();
+        }
+        
+        charts.activityChart = createChart('activityChart', 'line', {
+            labels,
+            datasets: [
+                {
+                    label: 'Sessions',
+                    data: sessions,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Words Taught',
+                    data: words,
+                    borderColor: '#764ba2',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        }, {
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily activity:', error);
+    }
+}
+
+/**
+ * Load exercise accuracy chart
+ */
+async function loadExerciseAccuracy() {
+    try {
+        const data = await callSupabaseFunction('get_exercise_accuracy', { days: 7 });
+        
+        if (!data || data.length === 0) {
+            console.warn('No exercise accuracy data');
+            return;
+        }
+        
+        const labels = data.map(d => {
+            const date = new Date(d.activity_date || d.date);
+            return date.toLocaleDateString('en-US', { weekday: 'short' });
+        });
+        
+        const accuracy = data.map(d => (d.accuracy_rate || d.accuracy || 0));
+        
+        if (charts.accuracyChart) {
+            charts.accuracyChart.destroy();
+        }
+        
+        charts.accuracyChart = createChart('accuracyChart', 'line', {
+            labels,
+            datasets: [{
+                label: 'Accuracy Rate (%)',
+                data: accuracy,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        }, {
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: (value) => value + '%'
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading exercise accuracy:', error);
+    }
+}
+
+/**
+ * Load top performers chart
+ */
+async function loadTopPerformers() {
+    try {
+        const data = await callSupabaseFunction('get_top_performers');
+        
+        if (!data || data.length === 0) {
+            console.warn('No top performers data');
+            return;
+        }
+        
+        const top10 = data.slice(0, 10);
+        const labels = top10.map(d => d.user_name || d.username || `User ${d.user_id?.substring(0, 8)}`);
+        const words = top10.map(d => d.words_learned || d.total_words || 0);
+        
+        if (charts.performersChart) {
+            charts.performersChart.destroy();
+        }
+        
+        charts.performersChart = createChart('performersChart', 'bar', {
+            labels,
+            datasets: [{
+                label: 'Words Learned',
+                data: words,
+                backgroundColor: '#667eea',
+                borderColor: '#5568d3',
+                borderWidth: 1
+            }]
+        }, {
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading top performers:', error);
+    }
+}
+
+/**
+ * Load difficult words table
+ */
+async function loadDifficultWords() {
+    try {
+        const data = await callSupabaseFunction('get_difficult_words', { limit: 10 });
+        
+        const tbody = document.getElementById('difficultWordsTable');
+        if (!tbody) return;
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No difficult words data available</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = data.map(word => `
             <tr>
-                <td><strong>${name}</strong><br><small>${phoneNumber}</small></td>
-                <td>${wordsLearned}</td>
-                <td>🔥 ${currentStreak} days</td>
-                <td>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${responseRate}%"></div>
+                <td><strong>${word.german_word || word.word || 'N/A'}</strong></td>
+                <td>${word.english_translation || word.translation || 'N/A'}</td>
+                <td>${word.category || word.word_category || 'N/A'}</td>
+                <td>${formatNumber(word.times_taught || word.attempts || 0)}</td>
+                <td>${(word.error_rate || 0).toFixed(1)}%</td>
+                <td>${getDifficultyBadge(word.difficulty || 'moderate')}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading difficult words:', error);
+        const tbody = document.getElementById('difficultWordsTable');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">Error loading data</td>
+                </tr>
+            `;
+        }
+    }
+}
+
+/**
+ * Load recent activity feed
+ */
+async function loadRecentActivity() {
+    try {
+        const data = await callSupabaseFunction('get_recent_activity', { limit: 20 });
+        
+        const feed = document.getElementById('recentActivityFeed');
+        if (!feed) return;
+        
+        if (!data || data.length === 0) {
+            feed.innerHTML = createEmptyState('📭', 'No Recent Activity', 'No activity recorded yet');
+            return;
+        }
+        
+        feed.innerHTML = data.map(activity => {
+            const icon = getActivityIcon(activity.activity_type || activity.type);
+            const username = activity.user_name || activity.username || `User ${activity.user_id?.substring(0, 8)}`;
+            const timeAgo = formatRelativeDate(activity.created_at || activity.timestamp);
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-text">
+                            <strong>${username}</strong> ${activity.description || activity.activity || 'performed an action'}
+                        </div>
+                        <div class="activity-meta">${timeAgo}</div>
                     </div>
-                    <small>${responseRate.toFixed(1)}%</small>
-                </td>
-                <td>${formatRelativeDate(lastActive)}</td>
-                <td>
-                    <span class="badge ${getStatusBadge(lastActive)}">
-                        ${getStatusText(lastActive)}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('');
-    
-    log('Users table updated', { userCount: users.length }, 'success');
-}
-
-/**
- * Update difficult words table
- */
-function updateDifficultWordsTable(data) {
-    log('Updating difficult words table...', data);
-    
-    const tbody = document.getElementById('difficultWordsTable');
-    if (!tbody) {
-        log('Difficult words table body not found', null, 'warning');
-        return;
-    }
-    
-    const words = validateArray(data, 'difficult words table');
-    
-    if (words.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="loading">No difficult words data yet</td></tr>';
-        log('Difficult words table: no data available', null, 'warning');
-        return;
-    }
-    
-    tbody.innerHTML = words.map(word => {
-        const wordText = word.word || 'N/A';
-        const translation = word.translation || 'N/A';
-        const timesTaught = parseIntSafe(word.times_taught, 0);
-        const markedHard = parseIntSafe(word.marked_hard, 0);
-        const difficultyPct = parseNumber(word.difficulty_pct, 0);
-        
-        const badgeClass = difficultyPct > 50 ? 'badge-danger' : 
-                          difficultyPct > 30 ? 'badge-warning' : 
-                          'badge-success';
-        
-        return `
-            <tr>
-                <td><strong>${wordText}</strong></td>
-                <td>${translation}</td>
-                <td>${timesTaught}</td>
-                <td>${markedHard}</td>
-                <td>
-                    <span class="badge ${badgeClass}">
-                        ${difficultyPct.toFixed(1)}%
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('');
-    
-    log('Difficult words table updated', { wordCount: words.length }, 'success');
-}
-
-/**
- * Update recent activity feed
- */
-function updateRecentActivityFeed(data) {
-    log('Updating recent activity feed...', data);
-    
-    const feed = document.getElementById('recentActivityFeed');
-    if (!feed) {
-        log('Recent activity feed not found (element may not exist in this dashboard)', null, 'warning');
-        return;
-    }
-    
-    const activities = validateArray(data, 'recent activity feed');
-    
-    if (activities.length === 0) {
-        feed.innerHTML = '<div class="loading">No recent activity</div>';
-        log('Recent activity feed: no data available', null, 'warning');
-        return;
-    }
-    
-    feed.innerHTML = activities.map(activity => {
-        const userName = activity.user_name || 'Unknown User';
-        const action = activity.action || 'performed an action';
-        const timestamp = formatRelativeDate(activity.created_at);
-        
-        return `
-            <div class="activity-item">
-                <div class="activity-user">${userName}</div>
-                <div class="activity-action">${action}</div>
-                <div class="activity-time">${timestamp}</div>
-            </div>
-        `;
-    }).join('');
-    
-    log('Recent activity feed updated', { activityCount: activities.length }, 'success');
-}
-
-/**
- * Helper: Update element text content safely
- */
-function updateElement(id, value) {
-    const element = document.getElementById(id);
-    if (element) {
-        element.textContent = value;
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading recent activity:', error);
+        const feed = document.getElementById('recentActivityFeed');
+        if (feed) {
+            feed.innerHTML = '<div class="text-center text-danger">Error loading activity</div>';
+        }
     }
 }
 
 /**
- * Helper: Get status badge class
+ * Get activity icon based on type
  */
-function getStatusBadge(lastActive) {
-    if (!lastActive) return 'badge-danger';
+function getActivityIcon(type) {
+    const icons = {
+        'session': '📚',
+        'word_learned': '✅',
+        'mistake': '❌',
+        'exercise': '📝',
+        'achievement': '🏆',
+        'login': '🔑',
+        'default': '📌'
+    };
     
-    try {
-        const date = new Date(lastActive);
-        if (isNaN(date.getTime())) return 'badge-danger';
-        
-        const diffDays = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
-        if (diffDays < 1) return 'badge-success';
-        if (diffDays < 3) return 'badge-warning';
-        return 'badge-danger';
-    } catch {
-        return 'badge-danger';
-    }
+    return icons[type] || icons.default;
 }
 
-/**
- * Helper: Get status text
- */
-function getStatusText(lastActive) {
-    if (!lastActive) return 'Never Active';
-    
-    try {
-        const date = new Date(lastActive);
-        if (isNaN(date.getTime())) return 'Invalid Date';
-        
-        const diffDays = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
-        if (diffDays < 1) return 'Active Today';
-        if (diffDays < 3) return 'Recent';
-        return 'Inactive';
-    } catch {
-        return 'Error';
-    }
-}
-
-// Export main functions
-export { testConnection };
+export { loadAllData };
