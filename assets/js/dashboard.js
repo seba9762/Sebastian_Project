@@ -334,6 +334,7 @@ export async function loadDashboardData() {
         
         if (topPerformersResult.success) {
             updatePerformersChart(topPerformersResult.data);
+            loadTopPerformers(topPerformersResult.data);
         }
         
         if (userProgressResult.success) {
@@ -522,11 +523,11 @@ function updatePerformersChart(data) {
     
     // Get top 5 performers
     const topUsers = users
-        .sort((a, b) => parseIntSafe(b.words_learned, 0) - parseIntSafe(a.words_learned, 0))
+        .sort((a, b) => parseIntSafe(b.words_mastered || b.words_learned, 0) - parseIntSafe(a.words_mastered || a.words_learned, 0))
         .slice(0, 5);
     
     const names = topUsers.map(u => u.name || 'Unknown');
-    const wordsCount = topUsers.map(u => parseIntSafe(u.words_learned, 0));
+    const wordsCount = topUsers.map(u => parseIntSafe(u.words_mastered || u.words_learned, 0));
     
     // Update difficulty chart if we have difficulty data
     if (users.length > 0 && users[0].difficulty_distribution) {
@@ -538,6 +539,68 @@ function updatePerformersChart(data) {
     charts.performers.update();
     
     log('Performers chart updated', { topUsers: topUsers.length }, 'success');
+}
+
+/**
+ * Load and display top performers table with clickable rows
+ */
+function loadTopPerformers(data) {
+    log('Loading top performers table...', data);
+    
+    const tbody = document.getElementById('topPerformersTableBody');
+    if (!tbody) {
+        log('Top performers table body not found', null, 'warning');
+        return;
+    }
+    
+    const users = validateArray(data, 'top performers table');
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">No top performers data available</td></tr>';
+        log('Top performers table: no data available', null, 'warning');
+        return;
+    }
+    
+    // Sort by words_mastered and take top 10
+    const topUsers = users
+        .sort((a, b) => parseIntSafe(b.words_mastered || b.words_learned, 0) - parseIntSafe(a.words_mastered || a.words_learned, 0))
+        .slice(0, 10);
+    
+    tbody.innerHTML = topUsers.map(user => {
+        const userId = user.user_id || '';
+        const name = user.name || 'Unknown User';
+        const phoneNumber = user.phone_number || '';
+        const wordsMastered = parseIntSafe(user.words_mastered || user.words_learned, 0);
+        const responseRate = parseNumber(user.response_rate, 0);
+        const streakDays = parseIntSafe(user.streak_days || user.current_streak, 0);
+        
+        return `
+            <tr class="clickable-row" data-user-id="${userId}">
+                <td><strong>${name}</strong><br><small>${phoneNumber}</small></td>
+                <td>${wordsMastered}</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${responseRate}%"></div>
+                    </div>
+                    <small>${responseRate.toFixed(1)}%</small>
+                </td>
+                <td>🔥 ${streakDays} days</td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Add click event listeners to each row
+    const rows = tbody.querySelectorAll('.clickable-row');
+    rows.forEach(row => {
+        row.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            if (userId) {
+                window.location.href = `user-detail.html?user_id=${userId}`;
+            }
+        });
+    });
+    
+    log('Top performers table updated', { userCount: topUsers.length }, 'success');
 }
 
 /**

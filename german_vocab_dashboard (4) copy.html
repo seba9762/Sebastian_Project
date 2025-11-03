@@ -171,6 +171,20 @@
             background: #f8f9fa;
         }
         
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        
+        .clickable-row:hover {
+            background: #e3f2fd !important;
+            transform: scale(1.01);
+        }
+        
+        .clickable-row:active {
+            transform: scale(0.99);
+        }
+        
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -412,6 +426,26 @@
                 <h3 class="chart-title">Top Performers</h3>
                 <canvas id="performersChart"></canvas>
             </div>
+        </div>
+        
+        <!-- Top Performers Table -->
+        <div class="table-card" style="margin-bottom: 30px;">
+            <h3 class="chart-title">Top Performers</h3>
+            <table id="topPerformersTable">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Words Mastered</th>
+                        <th>Response Rate</th>
+                        <th>Streak</th>
+                    </tr>
+                </thead>
+                <tbody id="topPerformersTableBody">
+                    <tr>
+                        <td colspan="4" class="loading"><span class="spinner"></span>Loading data...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
         
         <!-- User Table -->
