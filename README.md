@@ -9,8 +9,13 @@ Admin dashboard for the German Vocabulary Learning System with real-time analyti
 ├── assets/
 │   └── js/
 │       ├── api.js          # Centralized API utilities and Supabase RPC helpers
-│       └── dashboard.js    # Dashboard logic, data loading, and chart rendering
+│       ├── dashboard.js    # Dashboard logic, data loading, and chart rendering
+│       └── user-detail.js  # User detail page logic
+├── supabase/
+│   ├── migrations/         # Database migrations and function definitions
+│   └── README.md          # Database documentation
 ├── german_vocab_dashboard (4) copy.html  # Main dashboard HTML
+├── user-detail.html       # User detail page HTML
 └── README.md
 ```
 
@@ -74,6 +79,15 @@ Admin dashboard for the German Vocabulary Learning System with real-time analyti
   - Graceful "No data" messaging
 
 ## Configuration
+
+### Database Setup
+
+1. Apply the database migrations from the `supabase/migrations/` directory:
+   - Via Supabase Dashboard SQL Editor: Copy and execute the migration files
+   - Via Supabase CLI: Run `supabase migration apply`
+   - See `supabase/README.md` for detailed instructions
+
+### Frontend Configuration
 
 1. Open the HTML file
 2. Configure your Supabase credentials:
