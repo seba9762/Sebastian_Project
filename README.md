@@ -1,133 +1,385 @@
 # German Vocabulary Dashboard
 
-Admin dashboard for the German Vocabulary Learning System with real-time analytics.
+A modern admin dashboard for the German Vocabulary Learning System with real-time analytics, built with Next.js 14, TypeScript, and Tailwind CSS.
 
-## Project Structure
+## 📋 Table of Contents
 
-```
-.
-├── assets/
-│   └── js/
-│       ├── api.js          # Centralized API utilities and Supabase RPC helpers
-│       └── dashboard.js    # Dashboard logic, data loading, and chart rendering
-├── german_vocab_dashboard (4) copy.html  # Main dashboard HTML
-└── README.md
-```
+- [Getting Started](#getting-started)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Development](#development)
+- [Available Scripts](#available-scripts)
+- [Configuration](#configuration)
+- [Code Quality](#code-quality)
+- [Deployment](#deployment)
+- [Legacy Assets](#legacy-assets)
 
-## Features
+## 🚀 Getting Started
 
-### API Module (`assets/js/api.js`)
-- **Reusable Supabase RPC Helper**: `callRPC(functionName, params)`
-  - Accepts parameters (e.g., `{ days: 7, limit: 10 }`)
-  - Consistent parsing of returned arrays/objects
-  - Automatic response normalization
-  
-- **Data Validation & Coercion**:
-  - `parseNumber()` / `parseIntSafe()` - Safe numeric parsing with defaults
-  - `normalizeResponse()` - Handles both single objects and arrays
-  - `validateArray()` - Ensures array responses
-  
-- **Date Formatting**:
-  - `formatDate()` - Safe date formatting with fallback
-  - `formatRelativeDate()` - Human-readable relative times (e.g., "2h ago")
-  - `formatChartDate()` - Formatted dates for chart labels
-  - Guards against invalid timestamps
-  
-- **Error Handling**:
-  - Centralized `handleError()` function
-  - User-facing alerts via `showAlert()`
-  - Structured logging with `log(message, data, level)`
-  
-- **Print/Export**:
-  - `printDashboard()` - Triggers browser print dialog
-  - Print-friendly CSS included
+### Prerequisites
 
-### Dashboard Module (`assets/js/dashboard.js`)
-- **Async Data Loading**:
-  - Loads all datasets in parallel using `Promise.all()`
-  - Loading spinners for better UX
-  - Auto-refresh every 5 minutes
-  
-- **RPC Functions Called**:
-  - `get_dashboard_stats` - Overall statistics
-  - `get_daily_activity` (days: 7) - Activity over last 7 days
-  - `get_exercise_accuracy` (days: 7) - Exercise completion rates
-  - `get_top_performers` - Top users by words learned
-  - `get_difficult_words` (limit: 10) - Most challenging words
-  - `get_recent_activity` (limit: 20) - Recent user activities
-  - `get_user_progress_summary` - User progress data
-  - `get_all_sessions_summary` - System overview
-  - `get_difficulty_distribution` - Word difficulty breakdown
-  
-- **Chart.js Visualizations**:
-  - Daily Activity (line chart)
-  - Difficulty Distribution (doughnut chart)
-  - Exercise Completion Rate (line chart)
-  - Top Performers (horizontal bar chart)
-  - Configurable tooltips and legends
-  - Empty-state fallbacks for missing data
-  
-- **Tables & Feeds**:
-  - Active Users table
-  - Most Challenging Words table
-  - Recent Activity feed (if element exists)
-  - Graceful "No data" messaging
+- Node.js 18+ (LTS recommended)
+- npm 9+ or yarn/pnpm
 
-## Configuration
-
-1. Open the HTML file
-2. Configure your Supabase credentials:
-
-```javascript
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
-```
-
-3. Open the HTML file in a browser
-
-## Development
-
-The project uses ES6 modules. To serve locally, use a web server that supports ES6 modules:
+### Quick Start
 
 ```bash
-# Using Python
-python3 -m http.server 8000
+# Install dependencies
+npm install
 
-# Using Node.js
-npx serve
+# Start development server
+npm run dev
 
-# Using PHP
-php -S localhost:8000
+# Open http://localhost:3000 in your browser
 ```
 
-Then navigate to `http://localhost:8000/german_vocab_dashboard%20(4)%20copy.html`
+## 💻 Tech Stack
 
-## Error Handling
+- **Next.js 14** - React framework with App Router for modern web development
+- **TypeScript** - Type-safe JavaScript for better code quality and IDE support
+- **React 18** - Latest React features and improvements
+- **Tailwind CSS 3** - Utility-first CSS framework for rapid UI development
+- **PostCSS** - CSS processing with Autoprefixer for vendor prefixes
+- **ESLint** - Code quality and consistency checking
+- **Prettier** - Automatic code formatting
+- **Husky** - Git hooks for pre-commit validation
+- **lint-staged** - Run linters on staged files
+- **SVGR** - Import SVGs as React components
+- **next-seo** - SEO optimization for Next.js
 
-- Network errors display user-facing alerts
-- Console logs include structured data for debugging
-- Invalid dates fall back to "No data" or "Never"
-- Missing numeric values default to 0
-- Empty datasets show appropriate "No data" messages
+## 📁 Project Structure
 
-## Print/Export
+```
+project/
+├── src/
+│   ├── app/                      # Next.js App Router
+│   │   ├── page.tsx              # Home page
+│   │   ├── layout.tsx            # Root layout with metadata
+│   │   ├── globals.css           # Global styles with Tailwind
+│   │   ├── dashboard/
+│   │   │   └── page.tsx          # Dashboard page
+│   │   ├── docs/
+│   │   │   └── page.tsx          # Documentation page
+│   │   └── error.tsx             # Error boundary (optional)
+│   ├── components/               # Reusable React components
+│   │   └── Header.tsx            # Example header component
+│   ├── lib/                      # Utility functions and helpers
+│   │   └── utils.ts              # Common utility functions
+│   └── content/                  # Static content and data
+├── public/                       # Static assets (images, icons, etc.)
+├── legacy/                       # Archived static assets from previous version
+├── .husky/                       # Git hooks configuration
+├── .eslintrc.json                # ESLint configuration
+├── .prettierrc.json              # Prettier configuration
+├── .prettierignore               # Prettier ignore rules
+├── .gitignore                    # Git ignore rules
+├── .env.example                  # Environment variables template
+├── tailwind.config.ts            # Tailwind CSS configuration
+├── tsconfig.json                 # TypeScript configuration
+├── next.config.js                # Next.js configuration
+├── postcss.config.js             # PostCSS configuration
+├── package.json                  # Project dependencies and scripts
+└── README.md                     # This file
+```
 
-Click the "Print / Export" button to open the browser's print dialog. The dashboard includes print-friendly CSS that:
-- Removes interactive buttons
-- Hides debug panels and alerts
-- Optimizes layout for paper/PDF
-- Maintains chart visibility
+## 🔧 Installation
 
-## Debugging
+### 1. Clone or create the project
 
-Click the "Toggle Debug" button to show/hide the debug panel with:
-- Structured console logs
-- API call details
-- Response data samples
-- Error messages with context
+```bash
+# If cloning
+git clone <repository-url>
+cd project
 
-## Browser Compatibility
+# Install dependencies
+npm install
+```
 
-- Modern browsers with ES6 module support
-- Chart.js 3.x or higher required
-- Fetch API for network requests
+### 2. Set up environment variables
+
+Create a `.env.local` file in the project root (copy from `.env.example`):
+
+```bash
+cp .env.example .env.local
+```
+
+Then update with your actual values:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_KEY=your_supabase_key
+
+# API Configuration (optional)
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+### 3. Install Husky hooks
+
+```bash
+npm install
+npx husky install
+```
+
+## 👨‍💻 Development
+
+### Start the development server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application in your browser. The page auto-updates as you edit files.
+
+### Project Structure Guide
+
+#### Adding Pages
+
+Pages go in `src/app/`. Use the App Router convention:
+
+```typescript
+// src/app/dashboard/page.tsx
+export default function Dashboard() {
+  return <div>Dashboard Content</div>;
+}
+```
+
+#### Creating Components
+
+Store reusable components in `src/components/`:
+
+```typescript
+// src/components/Card.tsx
+interface CardProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+export default function Card({ title, children }: CardProps) {
+  return (
+    <div className="card">
+      <h3 className="font-bold">{title}</h3>
+      {children}
+    </div>
+  );
+}
+```
+
+#### Utility Functions
+
+Add helpers in `src/lib/utils.ts`:
+
+```typescript
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US');
+}
+```
+
+#### Using Path Aliases
+
+The project is configured with `@/*` alias pointing to `src/`:
+
+```typescript
+import { formatDate } from '@/lib/utils';
+import Header from '@/components/Header';
+```
+
+## 📦 Available Scripts
+
+| Script                 | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `npm run dev`          | Start development server (http://localhost:3000) |
+| `npm run build`        | Build optimized production bundle                |
+| `npm start`            | Start production server (requires build first)   |
+| `npm run lint`         | Run ESLint to check code quality                 |
+| `npm run format`       | Format code with Prettier                        |
+| `npm run format:check` | Check if code is formatted                       |
+| `npm run type-check`   | Check TypeScript types without emitting files    |
+
+## ⚙️ Configuration
+
+### Tailwind CSS
+
+Customize Tailwind in `tailwind.config.ts`:
+
+```typescript
+theme: {
+  extend: {
+    colors: {
+      primary: {
+        // Custom color palette
+      },
+    },
+  },
+}
+```
+
+### TypeScript
+
+Configure TypeScript in `tsconfig.json`. Key settings:
+
+- `strict: true` - Enable strict type checking
+- `paths: "@/*": ["./src/*"]` - Path aliases
+- `jsx: preserve` - Preserve JSX for Next.js
+
+### ESLint
+
+Extend ESLint rules in `.eslintrc.json`:
+
+```json
+{
+  "extends": ["next", "next/core-web-vitals"],
+  "rules": {
+    // Your rules
+  }
+}
+```
+
+### Prettier
+
+Formatting rules in `.prettierrc.json`:
+
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "printWidth": 100,
+  "tabWidth": 2
+}
+```
+
+## ✅ Code Quality
+
+### Pre-commit Hooks
+
+Husky runs `lint-staged` before commits to ensure code quality:
+
+- TypeScript files: ESLint + Prettier
+- CSS/JSON: Prettier
+
+No need to run formatters manually—they run automatically!
+
+### Manual Quality Checks
+
+```bash
+# Check code quality
+npm run lint
+
+# Check formatting
+npm run format:check
+
+# Check TypeScript types
+npm run type-check
+
+# Fix issues
+npm run lint -- --fix
+npm run format
+```
+
+## 🚀 Deployment
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+### Start Production Server
+
+```bash
+npm start
+```
+
+### Environment-Specific Variables
+
+Next.js supports environment-specific files:
+
+- `.env.local` - Local overrides (not committed)
+- `.env.production` - Production-specific variables
+
+### Deployment Platforms
+
+#### Vercel (Recommended)
+
+```bash
+npm install -g vercel
+vercel
+```
+
+#### Docker
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+```
+
+#### Traditional Server
+
+```bash
+npm run build
+npm start
+```
+
+## 📚 Legacy Assets
+
+Previous static dashboard assets have been archived in the `legacy/` folder for reference:
+
+- `legacy/assets/` - JavaScript modules and utilities
+- `legacy/*.html` - Static HTML files
+- `legacy/IMPLEMENTATION_NOTES.md` - Previous implementation documentation
+
+These can be used as reference for:
+
+- Data integration patterns
+- UI design inspiration
+- API integration examples
+
+## 🤝 Contributing
+
+1. Create a feature branch: `git checkout -b feat/feature-name`
+2. Make changes and commit: `git commit -am 'Add feature'`
+3. Push to branch: `git push origin feat/feature-name`
+4. Submit a pull request
+
+### Code Standards
+
+- Use TypeScript for all new code
+- Follow Prettier formatting (automatic via git hooks)
+- Write descriptive commit messages
+- Add tests for new functionality
+- Update documentation as needed
+
+## 📝 License
+
+ISC
+
+## 🆘 Support
+
+For issues and questions:
+
+1. Check existing documentation in `/src/app/docs/page.tsx`
+2. Review legacy implementation notes in `legacy/IMPLEMENTATION_NOTES.md`
+3. Check TypeScript types for API interfaces
+4. Review component implementations for usage patterns
+
+## 📞 Additional Resources
+
+- [Next.js 14 Documentation](https://nextjs.org/docs)
+- [React 18 Documentation](https://react.dev)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [ESLint Documentation](https://eslint.org/docs/rules/)
+- [Prettier Documentation](https://prettier.io/docs)

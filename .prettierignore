@@ -1,0 +1,18 @@
+# Dependency directories
+node_modules
+.pnp
+.pnp.js
+
+# Production builds
+.next
+out
+build
+dist
+
+# Misc
+.DS_Store
+*.log
+*.swp
+
+# Legacy
+legacy/

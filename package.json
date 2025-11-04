@@ -1,0 +1,48 @@
+{
+  "name": "german-vocabulary-dashboard",
+  "version": "0.1.0",
+  "description": "Modern admin dashboard for the German Vocabulary Learning System built with Next.js 14",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "14.2.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "next-seo": "^6.5.0",
+    "classnames": "^2.3.2"
+  },
+  "devDependencies": {
+    "typescript": "5.3.3",
+    "tailwindcss": "3.4.1",
+    "postcss": "8.4.31",
+    "autoprefixer": "10.4.16",
+    "@types/node": "^20.10.6",
+    "@types/react": "18.2.46",
+    "@types/react-dom": "18.2.18",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "eslint": "8.56.0",
+    "eslint-config-next": "14.2.3",
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "@svgr/webpack": "^8.1.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md,json}": [
+      "prettier --write"
+    ]
+  }
+}
